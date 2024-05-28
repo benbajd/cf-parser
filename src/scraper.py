@@ -1,44 +1,92 @@
 import requests
 import json
 from bs4 import BeautifulSoup
+from typing import Protocol, TypedDict, Tuple, Type
+from itertools import batched
 
 
-def read_online(url):
-    '''returns the contents of url'''
+class ProblemDummy(TypedDict):
+    '''A dummy type representing a problem.'''
+    id: str  # problem's id
+    name: str  # problem's name
+    io: list[Tuple[str, str]]  # problem's io where each tuple is (input, output) of a testcase
+
+
+class Scraper(Protocol):
+    '''Scraper for a given platform.'''
+
+    @staticmethod
+    def scrape_contests() -> list[str]:
+        '''
+        Scrapes all contests.
+        :returns a list of their ids
+        '''
+        ...
+
+    @staticmethod
+    def scrape_problems(contest_id: str) -> list[ProblemDummy]:
+        '''
+        Scrapes all problems for a given contest id.
+        :param contest_id: the contest id
+        :returns a list of problems represented as ProblemDummy
+        '''
+        ...
+
+
+class ScraperCodeforces:
+    '''Implements a Scraper for Codeforces.'''
+
+    @staticmethod
+    def scrape_contests() -> list[str]:
+        '''
+        Scrapes all contests on Codeforces.
+        :returns a list of their ids
+        '''
+        all_contests = json.loads(read_online('https://codeforces.com/api/contest.list?gym=false'))['result']
+        return [contest['id'] for contest in all_contests]
+
+    @staticmethod
+    def scrape_problems(contest_id: str) -> list[ProblemDummy]:
+        '''
+        Scrapes all problems for a given Codeforces contest id.
+        :param contest_id: the contest id
+        :returns a list of problems represented as ProblemDummy
+        '''
+        soup = BeautifulSoup(read_online(f'https://codeforces.com/contest/{contest_id}/problems'), 'html.parser')
+        problem_tags = soup.find_all(attrs={'class': 'problemindexholder'})
+        problems: list[ProblemDummy] = []
+        for problem_tag in problem_tags:
+            problem: ProblemDummy = {
+                'id': problem_tag['problemindex'],
+                'name': problem_tag.find(class_='header').find(class_='title').string,
+                'io': []
+            }
+            for io_input_raw, io_output_raw in batched(problem_tag.find_all('pre'), n=2):
+                io_input = io_prettify('\n'.join(io_input_raw))
+                io_output = io_prettify('\n'.join(io_output_raw))
+                problem['io'].append((io_input, io_output))
+            problems.append(problem)
+        return problems
+
+
+def read_online(url: str) -> str:
+    '''
+    Read the contents of a website url.
+    :param url: the website url
+    :returns: the contents of the website
+    '''
     r = requests.get(url)
     while r.status_code != 200:
         r = requests.get(url)
     return r.text
 
 
-def io_prettify(io):
-    '''returns the fixed scraped io string'''
-    io = io[int(io[0] == '\n'):]
-    io += '\n' if io[-1] != '\n' else ''
-    return repr(io)
-
-
-def cf_contests_scrape():
-    '''returns a list of all contest ids'''
-    all_contests = json.loads(read_online('https://codeforces.com/api/contest.list?gym=false'))['result']
-    return [contest['id'] for contest in all_contests]
-
-
-def cf_problems_scrape(contest_id):
+def io_prettify(io: str) -> str:
     '''
-    returns a list of problems of contest_id, each represented as a dict with:
-    - id: the contest id
-    - name: the problem name
-    - io: list of io strings, paired as input and output
+    Make the io pretty by removing redundant newlines.
+    :param io: the io
+    :returns: the prettified io
     '''
-    soup = BeautifulSoup(read_online(f'https://codeforces.com/contest/{contest_id}/problems'), 'html.parser')
-    problem_tags = soup.find_all(attrs={'class': 'problemindexholder'})
-    problems = []
-    for problem_tag in problem_tags:
-        problem = {'id': problem_tag['problemindex'],
-                   'name': problem_tag.find(class_='header').find(class_='title').string,
-                   'io': []}
-        for io in problem_tag.find_all('pre'):
-            problem['io'].append(io_prettify('\n'.join(io.strings)))
-        problems.append(problem)
-    return problems
+    io = io.strip('\n')
+    io += '\n' if (not io or io[-1] != '\n') else ''
+    return repr(io)  # TODO: remove repr
