@@ -102,4 +102,4 @@ class DirsProblem:
         Get the problem data file.
         :returns: the problem data file
         '''
-        return self.folder_problem.down_file(f'problem_data.json')
+        return self.folder_problem.down_file('problem_data.json')

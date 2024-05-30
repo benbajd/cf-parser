@@ -7,8 +7,8 @@ from typing import Protocol, TypedDict, Tuple
 from itertools import batched
 
 
-class ProblemDummy(TypedDict):
-    '''A dummy type representing a problem.'''
+class ProblemOnline(TypedDict):
+    '''A type representing an online problem.'''
     id: str  # problem's id
     name: str  # problem's name
     io: list[Tuple[str, str]]  # problem's io where each tuple is (input, output) of a testcase
@@ -26,7 +26,7 @@ class Scraper(Protocol):
         ...
 
     @staticmethod
-    def scrape_problems(contest_id: str) -> list[ProblemDummy]:
+    def scrape_problems(contest_id: str) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given contest id.
         :param contest_id: the contest id
@@ -48,7 +48,7 @@ class ScraperCodeforces:
         return [contest['id'] for contest in all_contests]
 
     @staticmethod
-    def scrape_problems(contest_id: str) -> list[ProblemDummy]:
+    def scrape_problems(contest_id: str) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given Codeforces contest id.
         :param contest_id: the contest id
@@ -56,9 +56,9 @@ class ScraperCodeforces:
         '''
         soup = BeautifulSoup(read_online(f'https://codeforces.com/contest/{contest_id}/problems'), 'html.parser')
         problem_tags = soup.find_all(attrs={'class': 'problemindexholder'})
-        problems: list[ProblemDummy] = []
+        problems: list[ProblemOnline] = []
         for problem_tag in problem_tags:
-            problem: ProblemDummy = {
+            problem: ProblemOnline = {
                 'id': problem_tag['problemindex'],
                 'name': problem_tag.find(class_='header').find(class_='title').string,
                 'io': []

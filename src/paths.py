@@ -1,3 +1,5 @@
+'''Implements paths.'''
+
 from typing import Optional
 import os
 
