@@ -1,4 +1,5 @@
 from typing import Optional
+import os
 
 
 class Folder:
@@ -34,6 +35,18 @@ class Folder:
         :returns: the folder nxt one level lower than the current one
         '''
         return Folder(self.path + [down_folder])
+
+    def create_folder(self) -> None:
+        '''
+        Create the directory, requires the directory to not exist and the parent directory to exist.
+        '''
+        os.mkdir(str(self))
+
+    def delete_folder(self) -> None:
+        '''
+        Delete the directory, requires the directory to exist and be empty.
+        '''
+        os.rmdir(str(self))
 
 
 class File:
@@ -77,3 +90,9 @@ class File:
         '''
         with open(str(self), 'w') as f:
             f.write(contents)
+
+    def delete_file(self) -> None:
+        '''
+        Delete the file, requires the file to exist.
+        '''
+        os.remove(str(self))
