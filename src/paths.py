@@ -30,11 +30,19 @@ class Folder:
 
     def down(self, down_folder: str) -> "Folder":
         '''
-        Move one level lower to the folder nxt.
+        Move one level lower to the folder down_folder.
         :param down_folder: the folder to move into
-        :returns: the folder nxt one level lower than the current one
+        :returns: the folder down_folder one level lower than the current one
         '''
         return Folder(self.path + [down_folder])
+
+    def down_file(self, down_file: str) -> "File":
+        '''
+        Move one level lower to the file down_file
+        :param down_file: the file to move into
+        :returns: the file down_file one level lower than the current folder
+        '''
+        return File(self.path + [down_file])
 
     def create_folder(self) -> None:
         '''

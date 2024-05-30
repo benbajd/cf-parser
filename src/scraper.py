@@ -1,7 +1,9 @@
+'''Scraper protocol with implementations for each platform.'''
+
 import requests
 import json
 from bs4 import BeautifulSoup
-from typing import Protocol, TypedDict, Tuple, Type
+from typing import Protocol, TypedDict, Tuple
 from itertools import batched
 
 
