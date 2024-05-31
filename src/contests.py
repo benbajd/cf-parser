@@ -1,11 +1,11 @@
 '''Implements the contest class.'''
 
+import json
 from typing import Type
 from problems import Problem
 from scraper import Scraper
 from paths import Folder
 from directories import DirsContest
-import json
 
 
 class Contest:

@@ -1,10 +1,10 @@
 '''Scraper protocol with implementations for each platform.'''
 
-import requests
 import json
-from bs4 import BeautifulSoup
 from typing import Protocol, TypedDict, Tuple
 from itertools import batched
+import requests
+from bs4 import BeautifulSoup
 
 
 class ProblemOnline(TypedDict):
@@ -23,7 +23,6 @@ class Scraper(Protocol):
         Scrapes all contests.
         :returns a list of their ids
         '''
-        ...
 
     @staticmethod
     def scrape_problems(contest_id: str) -> list[ProblemOnline]:
@@ -32,7 +31,6 @@ class Scraper(Protocol):
         :param contest_id: the contest id
         :returns a list of problems represented as ProblemDummy
         '''
-        ...
 
 
 class ScraperCodeforces:
@@ -77,10 +75,10 @@ def read_online(url: str) -> str:
     :param url: the website url
     :returns: the contents of the website
     '''
-    r = requests.get(url)
-    while r.status_code != 200:
-        r = requests.get(url)
-    return r.text
+    response = requests.get(url)
+    while response.status_code != 200:
+        response = requests.get(url)
+    return response.text
 
 
 def io_prettify(io: str) -> str:

@@ -97,7 +97,7 @@ class File:
         Read the contents of the file.
         :returns: the file contents
         '''
-        with open(str(self), 'r') as f:
+        with open(str(self), 'r', encoding='utf-8') as f:
             return f.read()
 
     def write_file(self, contents: str) -> None:
@@ -105,7 +105,7 @@ class File:
         Write contents to the file, overriding if the file isn't empty.
         :param contents: the contents to write
         '''
-        with open(str(self), 'w') as f:
+        with open(str(self), 'w', encoding='utf-8') as f:
             f.write(contents)
 
     def delete_file(self) -> None:

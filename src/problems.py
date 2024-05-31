@@ -1,11 +1,11 @@
 '''Implements the problem class.'''
 
+import json
 from typing import TypedDict, Optional
 from scraper import ProblemOnline
 from directories import DirsProblem
 from paths import Folder, File
 import basefiles
-import json
 
 
 class ProblemOffline(TypedDict):
