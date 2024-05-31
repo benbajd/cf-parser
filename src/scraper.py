@@ -64,8 +64,8 @@ class ScraperCodeforces:
                 'io': []
             }
             for io_input_raw, io_output_raw in batched(problem_tag.find_all('pre'), n=2):
-                io_input = io_prettify('\n'.join(io_input_raw))
-                io_output = io_prettify('\n'.join(io_output_raw))
+                io_input = io_prettify('\n'.join(io_input_raw.strings))
+                io_output = io_prettify('\n'.join(io_output_raw.strings))
                 problem['io'].append((io_input, io_output))
             problems.append(problem)
         return problems
@@ -91,4 +91,4 @@ def io_prettify(io: str) -> str:
     '''
     io = io.strip('\n')
     io += '\n' if (not io or io[-1] != '\n') else ''
-    return repr(io)  # TODO: remove repr
+    return io

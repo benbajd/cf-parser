@@ -21,7 +21,7 @@ class Problem:
     problem_name: str  # problem's name
     contest_id: str  # contest of the problem
     folder: Folder  # problem's folder
-    dirs: DirsProblem  # problem's dir handler
+    dirs: DirsProblem  # problem's dirs handler
     time_limit: int  # problem's time limit
     io_count: int  # number of testcases
 
@@ -58,6 +58,7 @@ class Problem:
         self.problem_name = scraped_data['name']
         self.time_limit = 1  # TODO: scrape time limits
         self.io_count = len(scraped_data['io'])
+        self.update_problem_data()
 
     def init_offline(self) -> None:
         '''

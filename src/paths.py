@@ -58,6 +58,13 @@ class Folder:
         '''
         os.rmdir(str(self))
 
+    def folder_exists(self) -> bool:
+        '''
+        Check if the folder exists.
+        :return: true if the folder exists else false
+        '''
+        return os.path.isdir(str(self))
+
 
 class File:
     '''An immutable path to a file.'''
