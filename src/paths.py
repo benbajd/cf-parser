@@ -61,7 +61,7 @@ class Folder:
     def folder_exists(self) -> bool:
         '''
         Check if the folder exists.
-        :return: true if the folder exists else false
+        :returns: true if the folder exists else false
         '''
         return os.path.isdir(str(self))
 
@@ -102,10 +102,18 @@ class File:
 
     def write_file(self, contents: str) -> None:
         '''
-        Write contents to the file, overriding if the file isn't empty.
+        Write contents to the file, overriding if the file isn't empty. Creates the file if it doesn't exist.
         :param contents: the contents to write
         '''
         with open(str(self), 'w', encoding='utf-8') as f:
+            f.write(contents)
+
+    def append_file(self, contents: str) -> None:
+        '''
+        Append contents to the end of the file. Creates the file if it doesn't exist.
+        :param contents: the contents to append
+        '''
+        with open(str(self), 'a', encoding='utf-8') as f:
             f.write(contents)
 
     def delete_file(self) -> None:
