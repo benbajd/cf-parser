@@ -6,6 +6,7 @@ from problems import Problem
 from scraper import Scraper
 from paths import Folder
 from directories import DirsContest
+from messages import Messages
 
 
 class Contest:
@@ -13,19 +14,22 @@ class Contest:
     contest_id: str  # contest's id
     folder: Folder  # contest's folder
     dirs: DirsContest  # contest's dirs handler
+    message: Messages  # the message object that handles printing
     scraper: Type[Scraper]  # the scraper to be used when initializing a new contest
     problems: dict[str, Problem]  # the problems in the contest, a mapping of problem_ids to problems
 
-    def __init__(self, contest_id: str, folder: Folder, scraper: Type[Scraper]) -> None:
+    def __init__(self, contest_id: str, folder: Folder, message: Messages, scraper: Type[Scraper]) -> None:
         '''
         Init the contest using the online data if the folder doesn't exist or the offline data otherwise.
         :param contest_id: contest's id
         :param folder: contest's folder
+        :param message: the message object that handles printing
         :param scraper: the scraper to use when initializing a new contest
         '''
         self.contest_id = contest_id
         self.folder = folder
         self.dirs = DirsContest(folder)
+        self.message = message
         self.scraper = scraper
         self.problems = {}
         if not self.folder.folder_exists():
@@ -40,12 +44,13 @@ class Contest:
         '''
         # TODO: handle no problems
         # scrape and create the problems
-        for scraped_data in self.scraper.scrape_problems(self.contest_id):
+        for scraped_data in self.scraper.scrape_problems(self.contest_id, self.message):
             problem_id = scraped_data['id']
             self.problems[problem_id] = Problem(
                 problem_id,
                 self.contest_id,
                 self.dirs.get_problem(problem_id),
+                self.message,
                 scraped_data
             )
         # save the contest data
@@ -64,5 +69,6 @@ class Contest:
                 problem_id,
                 self.contest_id,
                 self.dirs.get_problem(problem_id),
+                self.message,
                 None
             )

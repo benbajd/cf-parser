@@ -5,6 +5,7 @@ from typing import Protocol, TypedDict, Tuple
 from itertools import batched
 import requests
 from bs4 import BeautifulSoup
+from messages import Messages
 
 
 class ProblemOnline(TypedDict):
@@ -18,17 +19,19 @@ class Scraper(Protocol):
     '''Scraper for a given platform.'''
 
     @staticmethod
-    def scrape_contests() -> list[str]:
+    def scrape_contests(message: Messages) -> list[str]:
         '''
         Scrapes all contests.
+        :param message: the message object that handles printing
         :returns a list of their ids
         '''
 
     @staticmethod
-    def scrape_problems(contest_id: str) -> list[ProblemOnline]:
+    def scrape_problems(contest_id: str, message: Messages) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given contest id.
         :param contest_id: the contest id
+        :param message: the message object that handles printing
         :returns a list of problems represented as ProblemDummy
         '''
 
@@ -37,22 +40,27 @@ class ScraperCodeforces:
     '''Implements a Scraper for Codeforces.'''
 
     @staticmethod
-    def scrape_contests() -> list[str]:
+    def scrape_contests(message: Messages) -> list[str]:
         '''
         Scrapes all contests on Codeforces.
+        :param message: the message object that handles printing
         :returns a list of their ids
         '''
-        all_contests = json.loads(read_online('https://codeforces.com/api/contest.list?gym=false'))['result']
+        all_contests = json.loads(read_online('https://codeforces.com/api/contest.list?gym=false', message))['result']
         return [contest['id'] for contest in all_contests]
 
     @staticmethod
-    def scrape_problems(contest_id: str) -> list[ProblemOnline]:
+    def scrape_problems(contest_id: str, message: Messages) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given Codeforces contest id.
         :param contest_id: the contest id
-        :returns a list of problems represented as ProblemDummy
+        :param message: the message object that handles printing
+        :returns a list of problems
         '''
-        soup = BeautifulSoup(read_online(f'https://codeforces.com/contest/{contest_id}/problems'), 'html.parser')
+        soup = BeautifulSoup(
+            read_online(f'https://codeforces.com/contest/{contest_id}/problems', message),
+            'html.parser'
+        )
         problem_tags = soup.find_all(attrs={'class': 'problemindexholder'})
         problems: list[ProblemOnline] = []
         for problem_tag in problem_tags:
@@ -61,6 +69,7 @@ class ScraperCodeforces:
                 'name': problem_tag.find(class_='header').find(class_='title').string,
                 'io': []
             }
+            # TODO: handle multiple testcases
             for io_input_raw, io_output_raw in batched(problem_tag.find_all('pre'), n=2):
                 io_input = io_prettify('\n'.join(io_input_raw.strings))
                 io_output = io_prettify('\n'.join(io_output_raw.strings))
@@ -69,10 +78,11 @@ class ScraperCodeforces:
         return problems
 
 
-def read_online(url: str) -> str:
+def read_online(url: str, message: Messages) -> str:
     '''
     Read the contents of a website url.
     :param url: the website url
+    :param message: the message object that handles printing
     :returns: the contents of the website
     '''
     response = requests.get(url)

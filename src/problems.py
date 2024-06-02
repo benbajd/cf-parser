@@ -6,6 +6,7 @@ from scraper import ProblemOnline
 from directories import DirsProblem
 from paths import Folder, File
 import basefiles
+from messages import Messages
 
 
 class ProblemOffline(TypedDict):
@@ -22,20 +23,24 @@ class Problem:
     contest_id: str  # contest of the problem
     folder: Folder  # problem's folder
     dirs: DirsProblem  # problem's dirs handler
+    message: Messages  # the message object that handles printing
     time_limit: int  # problem's time limit
     io_count: int  # number of testcases
 
-    def __init__(self, problem_id: str, contest_id: str, folder: Folder, scraped_data: Optional[ProblemOnline]) -> None:
+    def __init__(self, problem_id: str, contest_id: str, folder: Folder, message: Messages,
+                 scraped_data: Optional[ProblemOnline]) -> None:
         '''
         Init the problem using the online data if scraped_data is provided or the offline data otherwise.
         :param problem_id: the problem
         :param contest_id: the contest
         :param folder: the problem's folder
+        :param message: the message object that handles printing
         :param scraped_data: the online data if scraped initially
         '''
         self.problem_id = problem_id
         self.contest_id = contest_id
         self.folder = folder
+        self.message = message
         self.dirs = DirsProblem(folder, contest_id, problem_id)
         if scraped_data is not None:
             self.init_online(scraped_data)

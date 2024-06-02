@@ -331,7 +331,7 @@ class PrintBatched(Print):
         Init the PrintBatched.
         :param targets: the output targets
         '''
-        self.targets = targets
+        self.targets = targets.copy()
 
     def print(self, string: StylizedStr) -> None:
         '''
