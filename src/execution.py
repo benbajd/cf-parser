@@ -3,6 +3,7 @@
 import subprocess
 from dataclasses import dataclass
 from typing import Optional
+from enum import IntEnum
 from paths import File
 
 
@@ -20,12 +21,17 @@ class CompileResult:
     success: bool  # compiled successfully
 
 
+class RunResultType(IntEnum):
+    '''The result type of the run.'''
+    SUCCESS = 0  # ran successfully
+    RUNTIME_ERROR = 1  # runtime error
+    TIME_LIMIT_EXCEEDED = 2  # time limit exceeded
+
+
 @dataclass
 class RunResult:
     '''The result of run.'''
-    success: bool  # ran successfully
-    runtime_error: bool  # runtime error
-    time_limit_exceeded: bool  # time limit exceeded
+    result_type: RunResultType  # the result type of the run
     output: str  # the output
 
 
@@ -59,18 +65,19 @@ class Execution:
         return CompileResult(execute_result.return_code == 0)
 
     @staticmethod
-    def run(file: File, input_str: str, time_limit: float) -> RunResult:
+    def run(file: File, io_input: str, time_limit: float) -> RunResult:
         '''
         Run a .cpp program with input and a time limit.
         :param file: the .out file to run
-        :param input_str: the input
+        :param io_input: the input
         :param time_limit: the time limit in seconds
         :return: the result of run
         '''
-        execute_result = Execution.execute(['timeout', str(time_limit), str(file)], input_str)
-        return RunResult(
-            execute_result.return_code == 0,
-            execute_result.return_code not in [0, 124],
-            execute_result.return_code == 124,
-            execute_result.stdout
+        execute_result = Execution.execute(['timeout', str(time_limit), str(file)], io_input)
+        result_type = (  # timeout returns 124 when time limit exceeded or the return code of the command otherwise
+            RunResultType.SUCCESS if execute_result.return_code == 0 else (
+                RunResultType.RUNTIME_ERROR if execute_result.return_code not in [0, 124]
+                else RunResultType.TIME_LIMIT_EXCEEDED
+            )
         )
+        return RunResult(result_type, execute_result.stdout)

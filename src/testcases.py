@@ -14,8 +14,8 @@ class TestCaseType(IntEnum):
 
 class TestCaseMode(IntEnum):
     '''The mode for running testcases.'''
-    ONE: int = 0  # run as an entire testcase
-    MULTIPLE: int = 1  # split into multiple testcases when possible
+    ONE = 0  # run as an entire testcase
+    MULTIPLE = 1  # split into multiple testcases when possible
 
 
 class TestCase:
