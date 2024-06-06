@@ -3,6 +3,7 @@
 from enum import IntEnum
 from typing import Optional
 from paths import File
+from dataclasses import dataclass
 
 
 class TestCaseType(IntEnum):
@@ -18,15 +19,22 @@ class TestCaseMode(IntEnum):
     MULTIPLE = 1  # split into multiple testcases when possible
 
 
+@dataclass
+class IOPair:
+    '''The input output pair of a testcase.'''
+    io_input: File  # the input
+    io_output: File  # the output
+
+
 class TestCase:
     '''An immutable testcase.'''
     testcase_id: int  # the testcase's id
     testcase_type: TestCaseType  # the testcase's type
-    entire_testcase: File  # the entire testcase
-    multiple_testcases: Optional[list[File]]  # the split testcases if the testcase is a multiple testcase
+    entire_testcase: IOPair  # the entire testcase
+    multiple_testcases: Optional[list[IOPair]]  # the split testcases if the testcase is a multiple testcase
 
     def __init__(self, testcase_id: int, testcase_type: TestCaseType,
-                 entire_testcase: File, multiple_testcases: Optional[list[File]]) -> None:
+                 entire_testcase: IOPair, multiple_testcases: Optional[list[IOPair]]) -> None:
         '''
         Init TestCase.
         :param testcase_id: the testcase's id
@@ -39,7 +47,7 @@ class TestCase:
         self.testcase = entire_testcase
         self.multiple_testcases = multiple_testcases.copy() if multiple_testcases is not None else None
 
-    def get_testcases(self, mode: TestCaseMode) -> list[File]:
+    def get_testcases(self, mode: TestCaseMode) -> list[IOPair]:
         '''
         Get the testcases to run.
         :param mode: the mode of running testcases
