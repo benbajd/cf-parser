@@ -97,6 +97,38 @@ class DirsProblem:
         '''
         return self.folder_problem.down_file(f'{self.problem_id}_{io_id}.out')
 
+    def get_input_multitest(self, io_id: int, io_sub_id: int) -> File:
+        '''
+        Get the input file of a multitest.
+        :param io_id: the id of the io
+        :param io_sub_id: the sub id of the io
+        :return: the input file of a multitest
+        '''
+        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}-{io_sub_id}.in')
+
+    def get_output_multitest(self, io_id: int, io_sub_id: int) -> File:
+        '''
+        Get the output file of a multitest.
+        :param io_id: the id of the io
+        :param io_sub_id: the sub id of the io
+        :return: the output file of a multitest
+        '''
+        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}-{io_sub_id}.out')
+
+    def get_custom_checker(self) -> File:
+        '''
+        Get the custom checker file.
+        :return: the custom checker file
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_checker.cpp')
+
+    def get_custom_checker_compiled(self) -> File:
+        '''
+        Get the custom checker file compiled.
+        :return: the custom checker file compiled
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_checker.out')
+
     def get_problem_data(self) -> File:
         '''
         Get the problem data file.

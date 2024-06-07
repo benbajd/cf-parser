@@ -1,7 +1,7 @@
 '''Scraper protocol with implementations for each platform.'''
 
 import json
-from typing import Protocol, TypedDict, Tuple
+from typing import Protocol, TypedDict, Optional
 from itertools import batched
 import requests
 from bs4 import BeautifulSoup
@@ -12,7 +12,10 @@ class ProblemOnline(TypedDict):
     '''A type representing an online problem.'''
     id: str  # problem's id
     name: str  # problem's name
-    io: list[Tuple[str, str]]  # problem's io where each tuple is (input, output) of a testcase
+    time_limit: float  # problem's time limit
+    io: list[tuple[str, str]]  # problem's io where each tuple is (input, output) of a testcase
+    io_multiple_testcases: Optional[list[list[tuple[str, str]]]]  # problem's multiple testcases io
+    # where the length matches that of io and each corresponding list splits (input, output) into multiple tests
 
 
 class Scraper(Protocol):
@@ -67,7 +70,9 @@ class ScraperCodeforces:
             problem: ProblemOnline = {
                 'id': problem_tag['problemindex'],
                 'name': problem_tag.find(class_='header').find(class_='title').string,
-                'io': []
+                'time_limit': 1,  # TODO: scrape time limit
+                'io': [],
+                'io_multiple_testcases': None
             }
             # TODO: handle multiple testcases
             for io_input_raw, io_output_raw in batched(problem_tag.find_all('pre'), n=2):

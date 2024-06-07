@@ -1,6 +1,6 @@
 '''Implements the checkers for the runners to use.'''
 
-from typing import Protocol, Optional
+from typing import Protocol, Optional, Literal
 from enum import IntEnum
 from dataclasses import dataclass
 from paths import File
@@ -26,6 +26,7 @@ class CheckerResult:
 class Checker(Protocol):
     '''An immutable checker class.'''
 
+    one_char_name: Literal['t'] | Literal['y'] | Literal['c']  # one char name
     checker_file: Optional[File]  # the checker .cpp file when custom or None otherwise
     checker_file_out: Optional[File]  # the checker .out file when custom or None otherwise
 
@@ -43,6 +44,7 @@ class Checker(Protocol):
 class CheckerTokens(Checker):
     '''Implements the token checker.'''
 
+    one_char_name: Literal['t']
     checker_file: None  # None since the checker isn't custom
     checker_file_out: None  # None since the checker isn't custom
 
@@ -50,6 +52,7 @@ class CheckerTokens(Checker):
         '''
         Init CheckerTokens.
         '''
+        self.one_char_name = 't'
         self.checker_file = None
         self.checker_file_out = None
 
@@ -85,6 +88,7 @@ class CheckerTokens(Checker):
 class CheckerYesNo(Checker):
     '''Implements the yes/no checker.'''
 
+    one_char_name: Literal['y']
     checker_file: None  # None since the checker isn't custom
     checker_file_out: None  # None since the checker isn't custom
 
@@ -92,6 +96,7 @@ class CheckerYesNo(Checker):
         '''
         Init CheckerYesNo.
         '''
+        self.one_char_name = 'y'
         self.checker_file = None
         self.checker_file_out = None
 
@@ -123,6 +128,7 @@ class CheckerYesNo(Checker):
 class CheckerCustom(Checker):
     '''Implements the custom checker.'''
 
+    one_char_name: Literal['c']
     checker_file: File  # the checker .cpp file
     checker_file_out: File  # the checker .out file
 
@@ -132,6 +138,7 @@ class CheckerCustom(Checker):
         :param checker_file: the checker .cpp file
         :param checker_file_out: the checker .out file
         '''
+        self.one_char_name = 'c'
         self.checker_file = checker_file
         self.checker_file_out = checker_file_out
 
