@@ -9,6 +9,7 @@ import basefiles
 from messages import Messages
 from testcases import TestCase, TestCaseMode, TestCaseType, IOPair
 from checkers import Checker, CheckerTokens, CheckerYesNo, CheckerCustom
+from runners import Runner
 
 
 class ProblemOffline(TypedDict):
@@ -33,6 +34,7 @@ class Problem:
     all_testcases: list[TestCase]  # problem's testcases
     testcase_mode: TestCaseMode  # the mode of running testcases
     checker: Checker  # the checker
+    runner: Runner  # the runner
 
     def __init__(self, problem_id: str, contest_id: str, folder: Folder, message: Messages,
                  scraped_data: Optional[ProblemOnline]) -> None:
@@ -49,6 +51,7 @@ class Problem:
         self.folder = folder
         self.message = message
         self.dirs = DirsProblem(folder, contest_id, problem_id)
+        self.runner = Runner(message)
         if scraped_data is not None:
             self.init_online(scraped_data)
         else:
@@ -152,3 +155,16 @@ class Problem:
             'checker_type': self.checker.one_char_name,
         }
         self.dirs.get_problem_data().write_file(json.dumps(problem_data))
+
+    def run(self) -> None:
+        '''
+        Run the problem.
+        '''
+        self.runner.run(
+            self.all_testcases,
+            self.dirs.get_main(),
+            self.dirs.get_main_compiled(),
+            self.time_limit,
+            self.checker,
+            self.testcase_mode
+        )

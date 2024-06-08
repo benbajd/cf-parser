@@ -39,7 +39,7 @@ class Scraper(Protocol):
         '''
 
 
-class ScraperCodeforces:
+class ScraperCodeforces(Scraper):
     '''Implements a Scraper for Codeforces.'''
 
     @staticmethod

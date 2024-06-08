@@ -46,7 +46,8 @@ class Execution:
         :param input_str: the input string passed as stdin or None if no input should be passed
         :return: the result of execute
         '''
-        completed = subprocess.run(args, input=input_str, capture_output=True, check=False)
+        encoded_input_str: Optional[bytes] = input_str.encode('utf-8') if input_str is not None else None
+        completed = subprocess.run(args, input=encoded_input_str, capture_output=True, check=False)
         return ExecuteResult(
             completed.stdout.decode(encoding='utf-8'),
             completed.stderr.decode(encoding='utf-8'),

@@ -1,11 +1,12 @@
 '''Implements the runner class.'''
 
+import time
 from paths import File
 from verdicts import CompileVerdict, RunVerdict
 from messages import Messages
 from testcases import TestCase, TestCaseMode, IOPair
 from checkers import Checker, CheckerResultType
-from threading import Thread, Lock
+from threading import Thread
 import queue
 import execution
 from execution import Execution
@@ -36,14 +37,16 @@ class Runner:
         # COMPILATION
 
         # initial message
-        # TODO: initial message
+        start_time = time.perf_counter()
+        compile_count = 1 + int(checker.checker_file is not None)
+        run_count = sum(len(testcase.get_testcases(testcase_mode)) for testcase in run_testcases)
+        self.message.runner_start(compile_count, run_count)
 
         # prepare files to compile
         to_compile: list[tuple[File, File]] = [(main, main_out)]
         if checker.checker_file is not None:
             assert checker.checker_file_out is not None  # checker_file and checker_file_out have the same type
             to_compile.append((checker.checker_file, checker.checker_file_out))
-        compile_count = len(to_compile)
 
         # prepare verdicts, queue, and the compile thread target
         compile_verdicts: list[CompileVerdict] = [CompileVerdict.COMPILING for _ in range(compile_count)]
@@ -74,13 +77,18 @@ class Runner:
         # wait on the threads to finish
         for _ in range(compile_count):
             finished_index = compile_queue.get()
-            # TODO: call message
+            self.message.runner_compile_update(compile_verdicts, run_count)
 
-        # TODO: color the brackets
+        compile_bracket_verdict = (
+            CompileVerdict.SUCCESS if CompileVerdict.COMPILATION_ERROR not in compile_verdicts
+            else CompileVerdict.COMPILATION_ERROR
+        )
+        self.message.runner_compile_finish(compile_verdicts, compile_bracket_verdict, run_count)
 
         # check that all files compiled successfully
         if CompileVerdict.COMPILATION_ERROR in compile_verdicts:
-            # TODO: output failed compilations
+            end_time = time.perf_counter()
+            self.message.runner_finish_after_compile(compile_verdicts, end_time - start_time)
             return
 
         # RUN
@@ -92,7 +100,7 @@ class Runner:
         for testcase_number, testcase in enumerate(run_testcases):
             multiple_testcases = testcase.get_testcases(testcase_mode)
             to_run.extend(multiple_testcases)
-            if len(multiple_testcases) == 1:
+            if testcase_mode == TestCaseMode.ONE or testcase.multiple_testcases is None:
                 testcase_ids.append(f'{testcase_number + 1}')
             else:
                 testcase_ids.extend([
@@ -101,7 +109,6 @@ class Runner:
                 ])
 
         # prepare verdicts, queue, and the run thread target
-        run_count = len(to_run)
         main_outputs: list[str] = ['' for _ in range(run_count)]
         wrong_answer_reasons: list[str] = ['' for _ in range(run_count)]
         run_verdicts: list[RunVerdict] = [RunVerdict.RUNNING for _ in range(run_count)]
@@ -178,8 +185,13 @@ class Runner:
             finished_index = run_queue.get()
             if run_verdicts[finished_index] != RunVerdict.ACCEPTED and overall_verdict == RunVerdict.ACCEPTED:
                 overall_verdict = run_verdicts[finished_index]
-            # TODO: call message
+            self.message.runner_run_update(compile_verdicts, compile_bracket_verdict, run_verdicts, testcase_ids)
 
-        # TODO: color the brackets
+        self.message.runner_finish(
+            compile_verdicts, compile_bracket_verdict, run_verdicts, testcase_ids, overall_verdict
+        )
 
-        # TODO: output all failed testcases
+        end_time = time.perf_counter()
+        self.message.runner_finish_after_run(
+            run_verdicts, testcase_ids, to_run, main_outputs, wrong_answer_reasons, end_time - start_time
+        )

@@ -24,6 +24,8 @@ class Colors(IntEnum):
     DEEP_BLUE = 21
     GRAY = 244
     SOFT_BLUE = 105
+    DARK_BLUE = 27
+    SEMI_DARK_BLUE = 33
 
 
 class EscapeCodes(Enum):
