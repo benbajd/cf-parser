@@ -154,9 +154,10 @@ class CheckerCustom(Checker):
         :param time_limit: the time limit in seconds, should be a positive number
         :return: the result of the check
         '''
+        io_delim = '---'  # join io with a delim to ensure the checker reads the right io
         run_result = Execution.run(
             self.checker_file_out,
-            '\n'.join([io_input, user_output, expected_output]),
+            f'\n{io_delim}\n'.join([io_input, user_output, expected_output]),
             time_limit
         )
 
