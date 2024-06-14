@@ -1,3 +1,5 @@
+'''Implements the messages class for printing messages and getting user input.'''
+
 from typing import TypeVar, Optional
 from prints import Print, StylizedStr, Colors
 from verdicts import CompileVerdict, RunVerdict
@@ -21,6 +23,8 @@ RUN_VERDICT_COLORS: dict[RunVerdict, Colors] = {
 
 MAX_IO_LINES = 50  # max number of io lines before cutting off the end
 SHORT_IO_LINES = 20  # number of io lines displayed when over the limit
+
+ARGUMENT_COLOR = Colors.LIGHT_GREEN
 
 
 class Messages:
@@ -206,7 +210,6 @@ class Messages:
         :param main_outputs: the output of main on each of the testcases
         :param wrong_answer_reasons: the wrong answer reason on each of the testcases with wrong answer
         :param total_time: the total runner time elapsed
-        :return:
         '''
         # print time elapsed
         self.log.update_previous(StylizedStr(f'took {total_time:.3f}s'))
@@ -249,7 +252,7 @@ class Messages:
         io_lines = io.split('\n')
         if len(io_lines) > MAX_IO_LINES:
             formatted_io = '\n'.join(io_lines[:SHORT_IO_LINES])
-            formatted_io += f'\n[omitted {len(io_lines) - SHORT_IO_LINES}]'
+            formatted_io += f'\n[omitted {len(io_lines) - SHORT_IO_LINES}/{len(io_lines)} lines]'
         else:
             formatted_io = io
         return formatted_io + ('\n' if end_with_newline else '')
@@ -268,3 +271,81 @@ class Messages:
             testcase_str += StylizedStr(io_name + '\n', Colors.LIME)
             testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != 2))
         return testcase_str
+
+    # ARGUMENTS
+
+    def helper_error_argument_header(self, arg_name: str) -> StylizedStr:
+        '''
+        Get the header for printing argument errors.
+        :param arg_name: argument's name
+        :return: the header for printing argument errors
+        '''
+        return StylizedStr('argument ') + StylizedStr(arg_name, ARGUMENT_COLOR)
+
+    def expected_at_least_one_argument(self, arg_name: str) -> None:
+        '''
+        Print that the positional argument was not given.
+        :param arg_name: argument's name
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(' expected at least 1 argument, got 0')
+        )
+
+    def not_enough_args_given(self, arg_name: str, num_args: int, num_given: int) -> None:
+        '''
+        Print that not enough arguments were given.
+        :param arg_name: argument's name
+        :param num_args: expected number of arguments
+        :param num_given: number of arguments given
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' expected {num_args} arguments, got {num_given}')
+        )
+
+    def argument_not_int(self, arg_name: str, arg: str) -> None:
+        '''
+        Print that the argument was not an int.
+        :param arg_name: argument's name
+        :param arg: the argument given
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' expected an int, got "{arg}"')
+        )
+
+    def argument_not_float(self, arg_name: str, arg: str) -> None:
+        '''
+        Print that the argument was not a float.
+        :param arg_name: argument's name
+        :param arg: the argument given
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' expected a float, got "{arg}"')
+        )
+
+    def argument_not_in_choices(self, arg_name: str, arg: str, choices: list[str]) -> None:
+        '''
+        Print that the argument was not one of the choices.
+        :param arg_name: argument's name
+        :param arg: the argument given
+        :param choices: the list of choices
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' expected one of ["{'", "'.join(choices)}"], got "{arg}"')
+        )
+
+    def argument_not_in_range(self, arg_name: str, arg: str, num_range: tuple[float, float]) -> None:
+        '''
+        Print that the argument was not in range.
+        :param arg_name: argument's name
+        :param arg: the argument given
+        :param num_range: the range
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' expected to be in range [{num_range[0]}, {num_range[1]}], got "{arg}"')
+        )
