@@ -355,6 +355,17 @@ class Messages:
             + StylizedStr(f' expected to be in range [{num_range[0]}, {num_range[1]}], got "{arg}"')
         )
 
+    def argument_help_str(self, arg_name: str, help_str: str) -> None:
+        '''
+        Print the help string for the argument.
+        :param arg_name: argument's name
+        :param help_str: the help string
+        '''
+        self.log.print(
+            self.helper_error_argument_header(arg_name)
+            + StylizedStr(f': {help_str}')
+        )
+
     # COMMANDS
 
     def helper_error_command_header(self, command_name: str) -> StylizedStr:
@@ -398,3 +409,81 @@ class Messages:
             self.helper_error_command_header(command_name)
             + StylizedStr(f': flag "{flag}" is not an optional argument')
         )
+
+    def helper_command_positional_argument_usage(self, arg_name: str, arg_type: str) -> StylizedStr:
+        '''
+        Get the usage str for a positional argument.
+        :param arg_name: argument's name
+        :param arg_type: argument's type
+        :return: the usage str for a positional argument
+        '''
+        usage_str = StylizedStr(arg_name, ARGUMENT_COLOR)
+        if arg_type != '1':
+            usage_str += StylizedStr(f'[{arg_type}]')
+        return usage_str
+
+    def helper_command_optional_argument_usage(self, flag: str, short_name: str, arg_type: str) -> StylizedStr:
+        '''
+        Get the usage str for an optional argument.
+        :param flag: argument's short flag
+        :param short_name: argument's short name
+        :param arg_type: argument's type
+        :return: the usage str for an optional argument
+        '''
+        usage_str = StylizedStr('[')
+        usage_str += StylizedStr(flag, ARGUMENT_COLOR)
+        if arg_type != '0':
+            usage_str += StylizedStr(f' {short_name}')
+            if arg_type != '1':
+                usage_str += StylizedStr(f'[{arg_type}]')
+        usage_str += StylizedStr(']')
+        return usage_str
+
+    def helper_command_help_str(self, help_str: list[tuple[str, str]]) -> StylizedStr:
+        '''
+        Get the help string for the command. arg_type is 'f' when arg_name is a flag
+        :param help_str: the help string, even indices contain (help_str, ""), odd ones contain (arg_name, arg_type)
+        :return: the help string for the command
+        '''
+        help_stylized_str = StylizedStr()
+        for idx, help_str_pair in enumerate(help_str):
+            if idx != 0:
+                help_stylized_str += StylizedStr(' ')
+            if idx % 2 == 0:  # help str
+                help_stylized_str += StylizedStr(help_str_pair[0])
+            else:  # argument
+                short_name, arg_type = help_str_pair
+                help_stylized_str += StylizedStr(short_name, ARGUMENT_COLOR)
+                assert arg_type != '0'  # can't print num_args == 0
+                if arg_type not in ('f', '1'):
+                    help_stylized_str += StylizedStr(f'[{arg_type}]')
+        return help_stylized_str
+
+    def command_help_str(self, command_name: str, positional_arguments: list[tuple[str, str]],
+                         optional_arguments: list[tuple[str, str, str]], help_str: list[str]) -> None:
+        '''
+        Print the help string for the command.
+        :param command_name: the command's name
+        :param positional_arguments: the positional arguments, list of (short_name, arg_type)
+        :param optional_arguments: the optional arguments, list of (short_name, short_flag, arg_type)
+        :param help_str: the help string, odd indices contain arguments' short names or short flags
+        '''
+        # the usage str
+        usage_str = StylizedStr(command_name, COMMAND_COLOR)
+        for short_name, arg_type in positional_arguments:
+            usage_str += StylizedStr(' ') + self.helper_command_positional_argument_usage(short_name, arg_type)
+        for short_name, flag, arg_type in optional_arguments:
+            usage_str += StylizedStr(' ') + self.helper_command_optional_argument_usage(flag, short_name, arg_type)
+        self.log.print(usage_str)
+
+        # the help str
+        arg_types: dict[str, str] = (
+            {short_name: arg_type for short_name, arg_type in positional_arguments}
+            | {short_name: arg_type for short_name, _, arg_type in optional_arguments}
+            | {flag: 'f' for _, flag, _ in optional_arguments}
+        )
+        help_str_pairs: list[tuple[str, str]] = [
+            (help_str_pair, '') if idx % 2 == 0 else (help_str_pair, arg_types[help_str_pair])
+            for idx, help_str_pair in enumerate(help_str)
+        ]
+        self.log.print(self.helper_command_help_str(help_str_pairs))

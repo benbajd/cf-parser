@@ -43,6 +43,11 @@ class Argument(Protocol):
         :return: the parsed argument if successfully parsed or None otherwise
         '''
 
+    def print_help_str(self) -> None:
+        '''
+        Print the help string.
+        '''
+
 
 class PositionalArgumentMode(IntEnum):
     '''The positional argument mode.'''
@@ -92,6 +97,9 @@ class PositionalArgument(Argument):
         assert bool(self.mode == PositionalArgumentMode.CHOICES) == bool(self.choices is not None)
         assert (bool(self.mode in [PositionalArgumentMode.INT_RANGE, PositionalArgumentMode.FLOAT_RANGE])
                 == bool(self.num_range is not None))
+
+        # positional arguments can't have num_args == 0
+        assert self.num_args != 0
 
     def get_name_long(self) -> str:
         '''
@@ -178,10 +186,16 @@ class PositionalArgument(Argument):
             assert False
 
         # return the parsed arguments
-        if len(args) == 1:
+        if self.num_args == 1:
             return json.dumps(args[0])
         else:
             return json.dumps(args)
+
+    def print_help_str(self) -> None:
+        '''
+        Print the help string.
+        '''
+        self.message.argument_help_str(self.get_name_long(), self.help_str)
 
 
 class OptionalArgumentMode(IntEnum):
@@ -332,10 +346,16 @@ class OptionalArgument(Argument):
             assert False
 
         # return the parsed arguments
-        if len(args) == 1:
+        if self.num_args == 1:
             return json.dumps(args[0])
         else:
             return json.dumps(args)
+
+    def print_help_str(self) -> None:
+        '''
+        Print the help string.
+        '''
+        self.message.argument_help_str(self.get_name_long(), self.help_str)
 
     @staticmethod
     def is_flag(arg: str) -> bool:

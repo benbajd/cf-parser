@@ -11,25 +11,28 @@ T = TypeVar('T')
 
 class Command(Generic[T]):
     '''An immutable command class.'''
-    name: str  # the name of the command
+    short_name: str  # the short name of the command
+    long_name: str  # the long name of the command
     command: T  # the command's enum
     positional_arguments: list[PositionalArgument]  # positional arguments
     optional_arguments: list[OptionalArgument]  # optional arguments
     message: Messages  # the message object that handles printing
-    help_str: list[str]  # the help string, odd indices contains argument names
+    help_str: list[str]  # the help string, odd indices contain short names or short flags of arguments
 
-    def __init__(self, name: str, command: T, positional_arguments: list[PositionalArgument],
+    def __init__(self, short_name: str, long_name: str, command: T, positional_arguments: list[PositionalArgument],
                  optional_arguments: list[OptionalArgument], message: Messages, help_str: list[str]) -> None:
         '''
         Init Command. The dict_name values of all arguments must be distinct.
-        :param name: the command's name
+        :param short_name: the command's short name
+        :param long_name: the command's long name
         :param command: the command
         :param positional_arguments: the positional arguments
         :param optional_arguments: the optional arguments
         :param message: the message object that handles printing
-        :param help_str: the help string, odd indices contain argument names
+        :param help_str: the help string, odd indices contain short names or short flags of arguments
         '''
-        self.name = name
+        self.short_name = short_name
+        self.long_name = long_name
         self.command = command
         self.positional_arguments = positional_arguments
         self.optional_arguments = optional_arguments
@@ -40,6 +43,13 @@ class Command(Generic[T]):
         assert (len({argument.dict_name for argument in self.positional_arguments} |
                     {argument.dict_name for argument in self.optional_arguments})
                 == len(self.positional_arguments) + len(self.optional_arguments))
+
+    def get_name(self) -> str:
+        '''
+        Get command's name for help strings and error messages.
+        :return: the command's name
+        '''
+        return ', '.join([self.short_name, self.long_name])
 
     def parse(self, args: list[str]) -> Optional[dict[str, str]]:
         '''
@@ -82,7 +92,7 @@ class Command(Generic[T]):
             while len(positional_args) > 0:
                 # check that there's still positional arguments to parse
                 if positional_index >= len(self.positional_arguments):
-                    self.message.command_too_many_positional_args(self.name, positional_args[0])
+                    self.message.command_too_many_positional_args(self.get_name(), positional_args[0])
                     return False
 
                 # get the current positional argument
@@ -117,12 +127,12 @@ class Command(Generic[T]):
             # parse the optional argument
             optional_idx = get_optional_argument(optional_args_group[0])
             if optional_idx is None:
-                self.message.command_flag_is_not_optional_argument(self.name, optional_args_group[0])
+                self.message.command_flag_is_not_optional_argument(self.get_name(), optional_args_group[0])
                 return False
             optional_args_group = optional_args_group[1:]  # remove the flag
             optional_argument = self.optional_arguments[optional_idx]
             if optional_parsed[optional_idx]:
-                self.message.command_repeated_optional_argument(self.name, optional_argument.get_name_long())
+                self.message.command_repeated_optional_argument(self.get_name(), optional_argument.get_name_long())
                 return False
             optional_parsed[optional_idx] = True
             num_parsed, success = process_argument(optional_argument, optional_args_group)
@@ -166,4 +176,29 @@ class Command(Generic[T]):
 
         # TODO: failing to parse a command prints a message on previous line
 
-    # TODO: help short and long
+    def print_help_str_short(self) -> None:
+        '''
+        Print the short help string that doesn't show argument descriptions.
+        '''
+        self.message.command_help_str(
+            self.get_name(),
+            [(argument.get_name_short(), str(argument.num_args)) for argument in self.positional_arguments],
+            [
+                (argument.get_name_short(), argument.short_flag, str(argument.num_args))
+                for argument in self.optional_arguments
+            ],
+            self.help_str
+        )
+
+    def print_help_str_long(self) -> None:
+        '''
+        Print the long help string that shows argument descriptions.
+        '''
+        # print the command help string
+        self.print_help_str_short()
+
+        # print the argument help strings
+        for positional_argument in self.positional_arguments:
+            positional_argument.print_help_str()
+        for optional_argument in self.optional_arguments:
+            optional_argument.print_help_str()
