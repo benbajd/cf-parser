@@ -21,10 +21,15 @@ RUN_VERDICT_COLORS: dict[RunVerdict, Colors] = {
     RunVerdict.CHECKER_TIME_LIMIT_EXCEEDED: Colors.SOFT_BLUE
 }
 
+TESTCASE_HEADER_COLOR = Colors.DEFAULT
+WRONG_ANSWER_REASON_COLOR = Colors.GRAY
+
+IO_HEADER_COLOR = Colors.LIME
 MAX_IO_LINES = 50  # max number of io lines before cutting off the end
 SHORT_IO_LINES = 20  # number of io lines displayed when over the limit
 
-ARGUMENT_COLOR = Colors.LIGHT_GREEN
+COMMAND_COLOR = Colors.LIGHT_GREEN
+ARGUMENT_COLOR = Colors.PINK
 
 
 class Messages:
@@ -226,14 +231,14 @@ class Messages:
 
         all_iterator = zip(run_verdicts, testcase_ids, to_run, main_outputs, wrong_answer_reasons)
         for run_verdict, testcase_id, io_pair, main_output, wrong_answer_reason in all_iterator:
-            header_str = StylizedStr(f'testcase {testcase_id}: ', Colors.DEFAULT, True)
+            header_str = StylizedStr(f'testcase {testcase_id}: ', TESTCASE_HEADER_COLOR, True)
             header_str += StylizedStr(short_verdict_names[run_verdict], RUN_VERDICT_COLORS[run_verdict], True)
             if run_verdict != RunVerdict.WRONG_ANSWER:
                 # only the header when not wrong answer
                 self.log.print(header_str)
             else:
                 # the header with the wrong answer reason and the io otherwise
-                header_str += StylizedStr(': ' + wrong_answer_reason, Colors.GRAY, True)
+                header_str += StylizedStr(': ' + wrong_answer_reason, WRONG_ANSWER_REASON_COLOR, True)
                 self.log.print(header_str)
                 self.log.print(self.helper_io_one_testcase(
                     io_pair.io_input.read_file(), main_output, io_pair.io_output.read_file()
@@ -268,7 +273,7 @@ class Messages:
         testcase_str = StylizedStr()
         io_names = ['input', 'output', 'expected']
         for io_id, (io_name, io_str) in enumerate(zip(io_names, [io_input, user_output, expected_output])):
-            testcase_str += StylizedStr(io_name + '\n', Colors.LIME)
+            testcase_str += StylizedStr(io_name + '\n', IO_HEADER_COLOR)
             testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != 2))
         return testcase_str
 
@@ -348,4 +353,48 @@ class Messages:
         self.log.print(
             self.helper_error_argument_header(arg_name)
             + StylizedStr(f' expected to be in range [{num_range[0]}, {num_range[1]}], got "{arg}"')
+        )
+
+    # COMMANDS
+
+    def helper_error_command_header(self, command_name: str) -> StylizedStr:
+        '''
+        Get the header for printing command errors.
+        :param command_name: command's name
+        :return: the header for printing command errors
+        '''
+        return StylizedStr('command ') + StylizedStr(command_name, COMMAND_COLOR)
+
+    def command_too_many_positional_args(self, command_name: str, first_extra_arg: str) -> None:
+        '''
+        Print that too many positional arguments were given.
+        :param command_name: command's name
+        :param first_extra_arg: the first extra positional argument given
+        '''
+        self.log.print(
+            self.helper_error_command_header(command_name) +
+            StylizedStr(f': too many positional arguments were given, first extra one was "{first_extra_arg}"')
+        )
+
+    def command_repeated_optional_argument(self, command_name: str, arg_name: str) -> None:
+        '''
+        Print that the optional argument was repeated.
+        :param command_name: command's name
+        :param arg_name: argument's name
+        '''
+        self.log.print(
+            self.helper_error_command_header(command_name) + StylizedStr(': ')
+            + self.helper_error_argument_header(arg_name)
+            + StylizedStr(f' was repeated')
+        )
+
+    def command_flag_is_not_optional_argument(self, command_name: str, flag: str) -> None:
+        '''
+        Print that the flag isn't an optional argument.
+        :param command_name: command's name
+        :param flag: the given flag
+        '''
+        self.log.print(
+            self.helper_error_command_header(command_name)
+            + StylizedStr(f': flag "{flag}" is not an optional argument')
         )

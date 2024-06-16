@@ -36,7 +36,7 @@ class Argument(Protocol):
         :return: the number of arguments to parse
         '''
 
-    def parse(self, args: list[str]) -> Optional[str]:
+    def parse(self, args: Optional[list[str]]) -> Optional[str]:
         '''
         Parse the arguments.
         :param args: the arguments
@@ -121,13 +121,15 @@ class PositionalArgument(Argument):
             assert self.num_args == '+' or self.num_args == '*'
             return num_available
 
-    def parse(self, args: list[str]) -> Optional[str]:
+    def parse(self, args: Optional[list[str]]) -> Optional[str]:
         '''
         Parse the arguments.
-        :param args: the given arguments, len(args) <= num_args (1 for '?', infinity for '+' and '*')
+        :param args: the given arguments, len(args) <= num_args (1 for '?', infinity for '+' and '*'), args is not None
         :return: the json encoded arguments if successfully parsed
                  (a list when num_args != 1 and the element when num_args == 1) or None otherwise
         '''
+        assert args is not None  # args have to be given for positional arguments
+
         # check that enough arguments were given
         if isinstance(self.num_args, int) and len(args) < self.num_args:
             self.message.not_enough_args_given(self.get_name_long(), self.num_args, len(args))
@@ -334,6 +336,15 @@ class OptionalArgument(Argument):
             return json.dumps(args[0])
         else:
             return json.dumps(args)
+
+    @staticmethod
+    def is_flag(arg: str) -> bool:
+        '''
+        Determine whether the argument is a flag or not.
+        :param arg: the given argument
+        :return: True if the argument is a flag, False otherwise
+        '''
+        return len(arg) >= 1 and arg[0] == '-' and all(c.isalpha() or c == '-' for c in arg)
 
 
 def is_int(arg: str) -> bool:
