@@ -126,10 +126,11 @@ class StylizedStr:
 class Print(Protocol):
     '''An immutable class that handles printing to the terminal or a file.'''
 
-    def print(self, string: StylizedStr) -> None:
+    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
         '''
         Print the string.
         :param string: the string to print
+        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
@@ -173,17 +174,18 @@ class PrintTerminal(Print):
         # print the string
         print(string.string, end='')
 
-    def print(self, string: StylizedStr) -> None:
+    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
         '''
         Print a stylized string to the terminal with a newline at the end and flush the output.
         :param string: the string to print
+        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
         # print the string
         for base_string in string.string:
             self.print_base(base_string)
 
         # print a newline and flush the output
-        print(end='\n', flush=True)
+        print(end=('\n' if end_newline else ''), flush=True)
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -243,12 +245,13 @@ class PrintFile(Print):
         self.file = file
         self.status_updates_temp_string = ''
 
-    def print(self, string: StylizedStr) -> None:
+    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
         '''
         Print a stylized string to the file, omitting all styles.
         :param string: the string to print
+        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
-        self.file.append_file(string.plain_string() + '\n')
+        self.file.append_file(string.plain_string() + ('\n' if end_newline else ''))
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -294,10 +297,11 @@ class PrintFileInputOnly(Print):
         '''
         self.file = file
 
-    def print(self, string: StylizedStr) -> None:
+    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
         '''
         Don't print the string since it only logs input.
         :param string: the string to print
+        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
         pass
 
@@ -337,13 +341,14 @@ class PrintBatched(Print):
         '''
         self.targets = targets.copy()
 
-    def print(self, string: StylizedStr) -> None:
+    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
         '''
         Print the string.
         :param string: the string to print
+        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
         for target in self.targets:
-            target.print(string)
+            target.print(string, end_newline)
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''

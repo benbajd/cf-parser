@@ -53,6 +53,9 @@ class Contest:
                 self.message,
                 scraped_data
             )
+
+        # TODO: print which problems don't have multitests
+
         # save the contest data
         problem_ids: list[str] = list(self.problems.keys())
         self.dirs.get_contest_data().write_file(json.dumps(problem_ids))

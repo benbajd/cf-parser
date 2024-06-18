@@ -14,8 +14,8 @@ class ProblemOnline(TypedDict):
     name: str  # problem's name
     time_limit: float  # problem's time limit
     io: list[tuple[str, str]]  # problem's io where each tuple is (input, output) of a testcase
-    io_multiple_testcases: Optional[list[list[tuple[str, str]]]]  # problem's multiple testcases io
-    # where the length matches that of io and each corresponding list splits (input, output) into multiple tests
+    io_multitest_inputs: Optional[list[list[str]]]  # problem's multitest inputs if split successfully
+    io_multitest_outputs: Optional[list[list[str]]]  # problem's multitest outputs if split successfully
 
 
 class Scraper(Protocol):
@@ -72,7 +72,8 @@ class ScraperCodeforces(Scraper):
                 'name': problem_tag.find(class_='header').find(class_='title').string,
                 'time_limit': 1,  # TODO: scrape time limit
                 'io': [],
-                'io_multiple_testcases': None
+                'io_multitest_inputs': None,
+                'io_multitest_outputs': None
             }
             # TODO: handle multiple testcases
             for io_input_raw, io_output_raw in batched(problem_tag.find_all('pre'), n=2):

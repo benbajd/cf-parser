@@ -4,7 +4,7 @@ import time
 from paths import File
 from verdicts import CompileVerdict, RunVerdict
 from messages import Messages
-from testcases import TestCase, TestCaseMode, IOPair
+from testcases import TestCase, TestCaseMode, TestCaseRun
 from checkers import Checker, CheckerResultType
 from threading import Thread
 import queue
@@ -94,19 +94,13 @@ class Runner:
         # RUN
 
         # prepare testcases to run and their ids
-        to_run: list[IOPair] = []
+        to_run: list[tuple[str, str]] = []  # inputs and expected outputs
         testcase_ids: list[str] = []
 
         for testcase_number, testcase in enumerate(run_testcases):
-            multiple_testcases = testcase.get_testcases(testcase_mode)
-            to_run.extend(multiple_testcases)
-            if testcase_mode == TestCaseMode.ONE or testcase.multiple_testcases is None:
-                testcase_ids.append(f'{testcase_number + 1}')
-            else:
-                testcase_ids.extend([
-                    f'{testcase_number + 1}-{testcase_subnumber + 1}'
-                    for testcase_subnumber in range(len(multiple_testcases))
-                ])
+            multitests: list[TestCaseRun] = testcase.get_testcases(testcase_mode)
+            to_run.extend([(multitest.io_input, multitest.io_output) for multitest in multitests])
+            testcase_ids.extend([multitest.id for multitest in multitests])
 
         # prepare verdicts, queue, and the run thread target
         main_outputs: list[str] = ['' for _ in range(run_count)]
@@ -121,9 +115,8 @@ class Runner:
             :param run_index: the index of the testcase to run
             '''
             # get io and run main
-            io_input = to_run[run_index].io_input
-            io_output = to_run[run_index].io_output
-            run_result = Execution.run(main_out, io_input.read_file(), time_limit)
+            io_input, io_output = to_run[run_index]
+            run_result = Execution.run(main_out, io_input, time_limit)
 
             # if one of runtime error or time limit exceeded happens, return
             if run_result.result_type == execution.RunResultType.RUNTIME_ERROR:
@@ -142,8 +135,8 @@ class Runner:
             main_outputs[run_index] = main_output
 
             checker_result = checker.check(
-                io_input.read_file(),
-                io_output.read_file(),
+                io_input,
+                io_output,
                 main_output,
                 3 * time_limit  # give custom checkers extra time for double output
             )

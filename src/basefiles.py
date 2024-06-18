@@ -54,6 +54,6 @@ int main() {
     assert_io_delim();
     // read expected output (optional)
     
-    return 0;
+    return 1;  // checker_ac() should be called before this line
 }
 """

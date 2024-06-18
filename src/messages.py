@@ -3,7 +3,6 @@
 from typing import TypeVar, Optional
 from prints import Print, StylizedStr, Colors
 from verdicts import CompileVerdict, RunVerdict
-from testcases import IOPair
 
 # the colors for compile verdicts
 COMPILE_VERDICT_COLORS: dict[CompileVerdict, Colors] = {
@@ -50,6 +49,28 @@ class Messages:
         Prints 'hi'.
         '''
         self.log.print(StylizedStr('hi'))
+
+    # GETTING USER INPUT
+
+    def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
+        '''
+        Get user's decision from one of two options, case-insensitive.
+        :param decision_str_list: ''.join(decision_str) is the description of the decision, odd indices will be bold
+        :param first_option: the first option of the decision, should be a char
+        :param second_option: the second option of the decision, should be a char
+        :return: True if the first option was selected or False of any other string was given
+        '''
+        # print the decision str
+        decision_str = StylizedStr()
+        for idx, decision_str_part in enumerate(decision_str_list):
+            decision_str += StylizedStr(decision_str_part, Colors.DEFAULT, bool(idx % 2 == 1))
+        decision_str += StylizedStr(f' [{first_option}/[{second_option}]] ')
+        self.log.print(decision_str, False)
+
+        # read the input and check if it matches the first option
+        input_str = input()
+        self.log.handle_input(StylizedStr(input_str))
+        return input_str.lower() == first_option.lower()
 
     # RUNNER
 
@@ -205,8 +226,9 @@ class Messages:
         # print the string
         self.log.status_updates(update_str, True)
 
-    def runner_finish_after_run(self, run_verdicts: list[RunVerdict], testcase_ids: list[str], to_run: list[IOPair],
-                                main_outputs: list[str], wrong_answer_reasons: list[str], total_time: float) -> None:
+    def runner_finish_after_run(self, run_verdicts: list[RunVerdict], testcase_ids: list[str],
+                                to_run: list[tuple[str, str]], main_outputs: list[str],
+                                wrong_answer_reasons: list[str], total_time: float) -> None:
         '''
         Print the runner finish by printing all io for testcases that weren't accepted.
         :param run_verdicts: the run verdicts
@@ -241,8 +263,21 @@ class Messages:
                 header_str += StylizedStr(': ' + wrong_answer_reason, WRONG_ANSWER_REASON_COLOR, True)
                 self.log.print(header_str)
                 self.log.print(self.helper_io_one_testcase(
-                    io_pair.io_input.read_file(), main_output, io_pair.io_output.read_file()
+                    io_pair[0], main_output, io_pair[1]
                 ))
+
+    # MULTITESTS
+
+    def multitests_split_result(self, testcase_id: int, io_file: str, split_result: bool) -> None:
+        '''
+        Print whether the split was successful.
+        :param testcase_id: testcase's id
+        :param io_file: one of 'input' or 'output'
+        :param split_result: True if the io_file was split successfully or False otherwise
+        '''
+        split_str = StylizedStr(f'split testcase {testcase_id} {io_file} ')
+        split_str += StylizedStr(('' if split_result else 'un') + 'successfully', Colors.DEFAULT, True)
+        self.log.print(split_str)
 
     # IO
 

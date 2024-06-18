@@ -16,7 +16,6 @@ class ProblemOffline(TypedDict):
     '''A type representing an offline problem.'''
     name: str  # problem's name
     time_limit: float  # the time limit
-    io_count: list[Optional[int]]  # number of multitests in each testcase or None if the testcase isn't a multitest
     testcase_types: list[TestCaseType]  # testcase types
     testcase_mode: TestCaseMode  # the mode of running testcases
     checker_type: Literal['t'] | Literal['y'] | Literal['c']  # the type of the checker
@@ -66,7 +65,7 @@ class Problem:
         self.folder.create_folder()
         self.dirs.get_main().write_file(basefiles.MAIN_CPP)
         self.dirs.get_custom_checker().write_file(basefiles.CHECKER_CPP)
-        self.all_testcases = []
+        self.all_testcases: list[TestCase] = []
         for io_id, (io_input, io_output) in enumerate(scraped_data['io']):
             # get the entire testcase
             input_file = self.dirs.get_input(io_id + 1)
@@ -74,27 +73,40 @@ class Problem:
             input_file.write_file(io_input)
             output_file.write_file(io_output)
 
-            # get the multitests if given
-            multiple_testcases: Optional[list[IOPair]] = None
-            if scraped_data['io_multiple_testcases'] is not None:
-                multiple_testcases = []
-                multitests = scraped_data['io_multiple_testcases'][io_id]
-                for io_sub_id, (io_sub_input, io_sub_output) in enumerate(multitests):
-                    multitest_input_file = self.dirs.get_input_multitest(io_id + 1, io_sub_id + 1)
-                    multitest_output_file = self.dirs.get_output_multitest(io_id + 1, io_sub_id + 1)
-                    multitest_input_file.write_file(io_sub_input)
-                    multitest_output_file.write_file(io_sub_output)
-                    multiple_testcases.append(IOPair(multitest_input_file, multitest_output_file))
+            # create empty multitest files
+            multitest_input_file = self.dirs.get_input_multitest(io_id + 1)
+            multitest_output_file = self.dirs.get_output_multitest(io_id + 1)
+            multitest_input_file.write_file('')
+            multitest_output_file.write_file('')
+
+            # get multitests
+            multitests_inputs: Optional[list[str]] = None
+            if scraped_data['io_multitest_inputs'] is not None:
+                multitests_inputs = scraped_data['io_multitest_inputs'][io_id]
+            multitests_outputs: Optional[list[str]] = None
+            if scraped_data['io_multitest_outputs'] is not None:
+                multitests_outputs = scraped_data['io_multitest_outputs'][io_id]
 
             # create the testcase
             self.all_testcases.append(
-                TestCase(io_id + 1, TestCaseType.SCRAPED, IOPair(input_file, output_file), multiple_testcases)
+                TestCase(
+                    io_id + 1,
+                    TestCaseType.SCRAPED,
+                    IOPair(input_file, output_file),
+                    IOPair(multitest_input_file, multitest_output_file),
+                    self.message,
+                    multitests_inputs,
+                    multitests_outputs
+                )
             )
 
         # set the problem data
         self.problem_name = scraped_data['name']
         self.time_limit = scraped_data['time_limit']
-        self.testcase_mode = TestCaseMode.MULTIPLE  # multitests by default
+        self.testcase_mode = (  # multiple if all testcases have multitests else one
+            TestCaseMode.MULTIPLE if all(testcase.set_multitest_mode() for testcase in self.all_testcases)
+            else TestCaseMode.ONE
+        )
         self.checker = CheckerTokens()  # tokens by default
 
         # update the problem data file
@@ -111,7 +123,7 @@ class Problem:
         self.problem_name = problem_data['name']
         self.time_limit = problem_data['time_limit']
         self.testcase_mode = TestCaseMode(problem_data['testcase_mode'])
-        if problem_data['checker_type'] == 't':
+        if problem_data['checker_type'] == 't':  # TODO: factory method in checkers
             self.checker = CheckerTokens()
         elif problem_data['checker_type'] == 'y':
             self.checker = CheckerYesNo()
@@ -122,21 +134,26 @@ class Problem:
 
         # set the testcases
         self.all_testcases: list[TestCase] = []
-        for io_id, (io_count, testcase_type) in enumerate(zip(problem_data['io_count'], problem_data['testcase_types'])):
+        for io_id, testcase_type_int in enumerate(problem_data['testcase_types']):
+            # get the testcase type and io files
+            testcase_type = TestCaseType(testcase_type_int)
             entire_testcase = IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
-            multiple_testcases: Optional[list[IOPair]] = None
-            if io_count is not None:
-                multiple_testcases = []
-                for io_sub_id in range(io_count):
-                    multiple_testcases.append(IOPair(
-                        self.dirs.get_input_multitest(io_id + 1, io_sub_id + 1),
-                        self.dirs.get_output_multitest(io_id + 1, io_sub_id + 1)
-                    ))
+
+            # multitests files exist when testcase type is scraped
+            multiple_testcases: Optional[IOPair] = None
+            if testcase_type == TestCaseType.SCRAPED:
+                multiple_testcases = IOPair(
+                    self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1)
+                )
+
+            # create the testcase
             self.all_testcases.append(TestCase(
                 io_id + 1,
                 TestCaseType(testcase_type),
                 entire_testcase,
-                multiple_testcases
+                multiple_testcases,
+                self.message,
+                None, None  # multitests are in the files
             ))
 
     def update_problem_data(self) -> None:
@@ -146,10 +163,6 @@ class Problem:
         problem_data: ProblemOffline = {
             'name': self.problem_name,
             'time_limit': self.time_limit,
-            'io_count': [
-                len(testcase.multiple_testcases) if testcase.multiple_testcases is not None else None
-                for testcase in self.all_testcases
-            ],
             'testcase_types': [testcase.testcase_type for testcase in self.all_testcases],
             'testcase_mode': self.testcase_mode,
             'checker_type': self.checker.one_char_name,

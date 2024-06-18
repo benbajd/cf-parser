@@ -97,23 +97,21 @@ class DirsProblem:
         '''
         return self.folder_problem.down_file(f'{self.problem_id}_{io_id}.out')
 
-    def get_input_multitest(self, io_id: int, io_sub_id: int) -> File:
+    def get_input_multitest(self, io_id: int) -> File:
         '''
         Get the input file of a multitest.
         :param io_id: the id of the io
-        :param io_sub_id: the sub id of the io
         :return: the input file of a multitest
         '''
-        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}-{io_sub_id}.in')
+        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}m.in')
 
-    def get_output_multitest(self, io_id: int, io_sub_id: int) -> File:
+    def get_output_multitest(self, io_id: int) -> File:
         '''
         Get the output file of a multitest.
         :param io_id: the id of the io
-        :param io_sub_id: the sub id of the io
         :return: the output file of a multitest
         '''
-        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}-{io_sub_id}.out')
+        return self.folder_problem.down_file(f'{self.problem_id}_{io_id}m.out')
 
     def get_custom_checker(self) -> File:
         '''
