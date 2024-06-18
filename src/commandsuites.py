@@ -23,6 +23,13 @@ class CommandSuite(Protocol[T]):
         :return: the command and parsed args if parsed successfully or None otherwise
         '''
 
+    def print_help_strings(self, command_name: Optional[str]) -> None:
+        '''
+        Print the short help strings for all commands if command is not given
+        or the long help string for command otherwise.
+        :param command_name: the command to print the help string for
+        '''
+
 
 class CommandsProblem(IntEnum):
     '''The commands for problem.'''
@@ -34,7 +41,8 @@ class CommandsProblem(IntEnum):
     RANDOM = 6  # n, random num [-t tl] [-c checker] [-s total-timeout]
     PASTE = 7  # p, paste
     MOVE = 8  # m, move problem
-    QUIT = 9  # q, quit
+    HELP = 9  # h, help command[?]
+    QUIT = 10  # q, quit
 
 
 class CommandSuiteProblem(CommandSuite[CommandsProblem]):
@@ -317,6 +325,23 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             ]
         )
 
+        # command help
+        # h, help command[?]
+        arg_help_command = PositionalArgument(
+            'command', 'command',
+            '?', PositionalArgumentMode.ANY, self.message,
+            'the command to display help for if specified or all otherwise'
+        )
+        command_help = Command(
+            'h', 'help', CommandsProblem.HELP,
+            [arg_help_command], [],
+            self.message,
+            [
+                'If', arg_help_command.get_name_short(), 'is not given, show short help strings for all commands. '
+                'Otherwise, show long help string for', arg_help_command.get_name_short(), '.'
+            ]
+        )
+
         # quit command
         # q, quit
         command_quit = Command(
@@ -338,6 +363,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             command_random,
             command_paste,
             command_move,
+            command_help,
             command_quit
         ]
 
@@ -374,3 +400,18 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             return command.command, parsed_args
         else:
             return None
+
+    def print_help_strings(self, command_name: Optional[str]) -> None:
+        '''
+        Print the short help strings for all commands if command is not given
+        or the long help string for command otherwise.
+        :param command_name: the command to print the help string for
+        '''
+        if command_name is None:
+            for command in self.all_commands:
+                command.print_help_str_short()
+        else:
+            if command_name in self.command_names:
+                self.command_names[command_name].print_help_str_long()
+            else:
+                self.message.command_suite_not_a_command(command_name)

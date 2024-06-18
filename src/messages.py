@@ -531,9 +531,9 @@ class Messages:
         '''
         self.log.print(StylizedStr('no command was given'))
 
-    def command_suite_not_a_command(self, command: str) -> None:
+    def command_suite_not_a_command(self, command_name: str) -> None:
         '''
         Print that the given command is not a command.
-        :param command: the given command
+        :param command_name: the given command
         '''
-        self.log.print(StylizedStr(f'"{command}" is not a command'))
+        self.log.print(StylizedStr(f'"{command_name}" is not a command'))
