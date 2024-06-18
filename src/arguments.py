@@ -218,12 +218,12 @@ class OptionalArgument(Argument):
     mode: OptionalArgumentMode  # the mode to use
     message: Messages  # the message object that handles printing
     help_str: str  # the help string
-    default: list[str]  # the args to be used when flag is not given
+    default: Optional[list[str]]  # the args to be used when flag is not given or None to use None in that case
     choices: Optional[list[str]]  # list of choices
     num_range: Optional[tuple[float, float]]  # the possible range [l, r]
 
     def __init__(self, short_flag: str, long_flag: str, dict_name: str, num_args: NumArgs,
-                 mode: OptionalArgumentMode, message: Messages, help_str: str, default: list[str],
+                 mode: OptionalArgumentMode, message: Messages, help_str: str, default: Optional[list[str]],
                  choices: Optional[list[str]] = None, num_range: Optional[tuple[float, float]] = None) -> None:
         '''
         Init OptionalArgument.
@@ -234,7 +234,7 @@ class OptionalArgument(Argument):
         :param mode: the mode to use when parsing
         :param message: the message object that handles printing
         :param help_str: the help string
-        :param default: the default args to be used when flag is not given
+        :param default: the default args to be used when flag is not given or None to use None in that case
         :param choices: list of choices, can only be not None when mode is 'choices'
         :param num_range: the possible range [l, r], can only be not None when mode is 'int_range'
         '''
@@ -294,7 +294,14 @@ class OptionalArgument(Argument):
         # set default args if flag not given
         flag_given = bool(args is not None)
         if args is None:
-            args = self.default
+            if self.default is not None:
+                args = self.default
+            else:
+                # return None
+                if self.num_args == 1:
+                    return json.dumps(None)
+                else:
+                    return json.dumps([None])
 
         # check that enough arguments were given
         if isinstance(self.num_args, int) and len(args) < self.num_args:

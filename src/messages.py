@@ -482,7 +482,7 @@ class Messages:
         '''
         help_stylized_str = StylizedStr()
         for idx, help_str_pair in enumerate(help_str):
-            if idx != 0:
+            if idx != 0 and (len(help_str_pair[0]) == 0 or help_str_pair[0][0] not in (',', '.')):  # no space on '.,'
                 help_stylized_str += StylizedStr(' ')
             if idx % 2 == 0:  # help str
                 help_stylized_str += StylizedStr(help_str_pair[0])
@@ -522,3 +522,18 @@ class Messages:
             for idx, help_str_pair in enumerate(help_str)
         ]
         self.log.print(self.helper_command_help_str(help_str_pairs))
+
+    # COMMAND SUITES
+
+    def command_suite_no_command_given(self) -> None:
+        '''
+        Print that no command was given.
+        '''
+        self.log.print(StylizedStr('no command was given'))
+
+    def command_suite_not_a_command(self, command: str) -> None:
+        '''
+        Print that the given command is not a command.
+        :param command: the given command
+        '''
+        self.log.print(StylizedStr(f'"{command}" is not a command'))

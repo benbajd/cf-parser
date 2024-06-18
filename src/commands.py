@@ -29,7 +29,7 @@ class Command(Generic[T]):
         :param positional_arguments: the positional arguments
         :param optional_arguments: the optional arguments
         :param message: the message object that handles printing
-        :param help_str: the help string, odd indices contain short names or short flags of arguments
+        :param help_str: the help string, odd indices contain short names or short flags of arguments, no spaces at ends
         '''
         self.short_name = short_name
         self.long_name = long_name
