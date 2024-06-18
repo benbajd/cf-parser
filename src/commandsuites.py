@@ -51,11 +51,12 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
     message: Messages  # the message object that handles printing
     command_names: dict[str, Command[CommandsProblem]]  # the dict of command names to commands
 
-    def __init__(self, message: Messages, problem_ids: list[str]) -> None:
+    def __init__(self, message: Messages, problem_ids: list[str], num_testcases: int) -> None:
         '''
         Init Command SuiteProblem.
         :param message: the message object that handles printing
         :param problem_ids: the list of problem ids
+        :param num_testcases: the number of testcases
         '''
         # set message and make problem_ids lowercase
         self.message: Messages = message
@@ -84,7 +85,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_edit = Command(
             'e', 'edit', CommandsProblem.EDIT,
-            [arg_edit_problems], [arg_edit_all, arg_edit_file],
+            [arg_edit_problems], [arg_edit_all, arg_edit_file], False,
             self.message,
             [
                 'Edit the .cpp files of', arg_edit_problems.get_name_short(), ', or all if', arg_edit_all.short_flag,
@@ -104,10 +105,10 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_custom_invocation = Command(
             'c', 'custom-invocation', CommandsProblem.CUSTOM_INVOCATION,
-            [], [arg_custom_invocation_file],
+            [], [arg_custom_invocation_file], False,
             self.message,
             [
-                'Run .cpp file in a separate shell. When', arg_custom_invocation_file.short_flag,
+                'Run .cpp file in a new shell. When', arg_custom_invocation_file.short_flag,
                 'is not given, run main, otherwise run', arg_custom_invocation_file.get_name_short(), '.'
             ]
         )
@@ -144,7 +145,9 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_run = Command(
             'r', 'run', CommandsProblem.RUN,
-            [], [arg_run_time_limit, arg_run_checker, arg_run_multitest_mode, arg_run_no_override],
+            [], [
+                arg_run_time_limit, arg_run_checker, arg_run_multitest_mode, arg_run_no_override
+            ], False,
             self.message,
             [
                 'Run the testcases. When', arg_run_time_limit.short_flag, 'is given, set the time limit to',
@@ -182,7 +185,9 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_set = Command(
             's', 'set', CommandsProblem.SET,
-            [], [arg_set_time_limit, arg_set_checker, arg_set_multitest_mode],
+            [], [
+                arg_set_time_limit, arg_set_checker, arg_set_multitest_mode
+            ], False,
             self.message,
             [
                 'Set the default options and modes of the problem. When', arg_set_time_limit.short_flag,
@@ -200,21 +205,21 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             1, OptionalArgumentMode.INT_RANGE, self.message,
             'the number of testcases to remove from the end',
             None,
-            num_range=(1, math.inf)
+            num_range=(1, num_testcases)
         )
         arg_input_output_keep = OptionalArgument(
             '-k', '--keep', 'keep',
             1, OptionalArgumentMode.INT_RANGE, self.message,
             'the number of testcases to keep from the start',
             None,
-            num_range=(0, math.inf)
+            num_range=(0, num_testcases - 1)
         )
         arg_input_output_multitests = OptionalArgument(
             '-m', '--multitests', 'multitests',
             '?', OptionalArgumentMode.INT_RANGE, self.message,
-            'the testcases whose multitests to edit or all if not specified',
+            'the testcase whose multitests to edit or all if not specified',
             None,
-            num_range=(1, math.inf)
+            num_range=(1, num_testcases)
         )
         arg_input_output_add = OptionalArgument(
             '-a', '--add', 'add',
@@ -227,28 +232,24 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             '?', OptionalArgumentMode.INT_RANGE, self.message,
             'the testcase to view or all if not specified',
             None,
-            num_range=(1, math.inf)
+            num_range=(1, num_testcases)
         )
         command_input_output = Command(
             'io', 'input-output', CommandsProblem.INPUT_OUTPUT,
             [], [
                 arg_input_output_remove, arg_input_output_keep, arg_input_output_multitests,
                 arg_input_output_add, arg_input_output_view
-            ],
+            ], True,
             self.message,
             [
-                'The testcase command. When', arg_input_output_remove.short_flag, 'is given, remove the last',
-                arg_input_output_remove.get_name_short(), 'testcases. When', arg_input_output_keep.short_flag,
+                'The testcase command. If', arg_input_output_remove.short_flag, 'is given, remove the last',
+                arg_input_output_remove.get_name_short(), 'testcases. If', arg_input_output_keep.short_flag,
                 'is given, keep the first', arg_input_output_keep.get_name_short(),
-                'testcases and remove the rest. When', arg_input_output_multitests.short_flag,
+                'testcases and remove the rest. If', arg_input_output_multitests.short_flag,
                 'is given, edit the multitests of', arg_input_output_multitests.get_name_short(),
-                'if specified, or all scraped testcases otherwise. When', arg_input_output_add.short_flag,
-                'is set, add a custom testcase. When', arg_input_output_view.short_flag, 'is given, view the testcase',
-                arg_input_output_view.get_name_short(), 'if specified, or all testcases otherwise. '
-                'When multiple flags are given, they are processed in the following order: first',
-                arg_input_output_remove.short_flag, 'and', arg_input_output_keep.short_flag,
-                'together, then', arg_input_output_multitests.short_flag, ',', arg_input_output_add.short_flag,
-                ', and finally', arg_input_output_view.short_flag, '.'
+                'if specified, or all scraped testcases otherwise. If', arg_input_output_add.short_flag,
+                'is set, add a custom testcase. If', arg_input_output_view.short_flag, 'is given, view the testcase',
+                arg_input_output_view.get_name_short(), 'if specified, or all testcases otherwise.'
             ]
         )
 
@@ -284,7 +285,9 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_random = Command(
             'n', 'random', CommandsProblem.RANDOM,
-            [arg_random_num], [arg_random_time_limit, arg_random_checker, arg_random_total_timeout],
+            [arg_random_num], [
+                arg_random_time_limit, arg_random_checker, arg_random_total_timeout
+            ], False,
             self.message,
             [
                 'Run the problem on', arg_random_num.get_name_short(), 'random testcases. When',
@@ -301,7 +304,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         # p, paste
         command_paste = Command(
             'p', 'paste', CommandsProblem.PASTE,
-            [], [],
+            [], [], False,
             self.message,
             [
                 'Copy the code of the problem to clipboard.'
@@ -318,7 +321,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
         command_move = Command(
             'm', 'move', CommandsProblem.MOVE,
-            [arg_move_problem], [],
+            [arg_move_problem], [], False,
             self.message,
             [
                 'Move to the problem', arg_move_problem.get_name_short(), '.'
@@ -329,12 +332,24 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         # h, help command[?]
         arg_help_command = PositionalArgument(
             'command', 'command',
-            '?', PositionalArgumentMode.ANY, self.message,
-            'the command to display help for if specified or all otherwise'
+            '?', PositionalArgumentMode.CHOICES, self.message,
+            'the command to display help for if specified or all otherwise',
+            [
+                command_edit.short_name, command_edit.long_name,
+                command_custom_invocation.short_name, command_custom_invocation.long_name,
+                command_run.short_name, command_run.long_name,
+                command_set.short_name, command_set.long_name,
+                command_input_output.short_name, command_input_output.long_name,
+                command_random.short_name, command_random.long_name,
+                command_paste.short_name, command_paste.long_name,
+                command_move.short_name, command_move.long_name,
+                'h', 'help',
+                'q', 'quit'
+            ]
         )
         command_help = Command(
             'h', 'help', CommandsProblem.HELP,
-            [arg_help_command], [],
+            [arg_help_command], [], False,
             self.message,
             [
                 'If', arg_help_command.get_name_short(), 'is not given, show short help strings for all commands. '
@@ -346,7 +361,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         # q, quit
         command_quit = Command(
             'q', 'quit', CommandsProblem.QUIT,
-            [], [],
+            [], [], False,
             self.message,
             [
                 'Quit the contest.'
@@ -405,13 +420,11 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         '''
         Print the short help strings for all commands if command is not given
         or the long help string for command otherwise.
-        :param command_name: the command to print the help string for
+        :param command_name: the command to print the help string for, must be the name of one of the commands
         '''
         if command_name is None:
             for command in self.all_commands:
                 command.print_help_str_short()
         else:
-            if command_name in self.command_names:
-                self.command_names[command_name].print_help_str_long()
-            else:
-                self.message.command_suite_not_a_command(command_name)
+            assert command_name in self.command_names
+            self.command_names[command_name].print_help_str_long()

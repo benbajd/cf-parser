@@ -445,6 +445,16 @@ class Messages:
             + StylizedStr(f': flag "{flag}" is not an optional argument')
         )
 
+    def command_too_many_optional_arguments_mutually_exclusive(self, command_name: str) -> None:
+        '''
+        Print that more than one optional argument was given even though they are mutually exclusive.
+        :param command_name: command's name
+        '''
+        self.log.print(
+            self.helper_error_command_header(command_name)
+            + StylizedStr(': at least two optional arguments were given but they are mutually exclusive')
+        )
+
     def helper_command_positional_argument_usage(self, arg_name: str, arg_type: str) -> StylizedStr:
         '''
         Get the usage str for a positional argument.
@@ -457,21 +467,26 @@ class Messages:
             usage_str += StylizedStr(f'[{arg_type}]')
         return usage_str
 
-    def helper_command_optional_argument_usage(self, flag: str, short_name: str, arg_type: str) -> StylizedStr:
+    def helper_command_optional_argument_usage(self, flag: str, short_name: str, arg_type: str,
+                                               brackets: bool = True) -> StylizedStr:
         '''
         Get the usage str for an optional argument.
         :param flag: argument's short flag
         :param short_name: argument's short name
         :param arg_type: argument's type
+        :param brackets: whether to print within brackets
         :return: the usage str for an optional argument
         '''
-        usage_str = StylizedStr('[')
+        usage_str = StylizedStr()
+        if brackets:
+            usage_str += StylizedStr('[')
         usage_str += StylizedStr(flag, ARGUMENT_COLOR)
         if arg_type != '0':
             usage_str += StylizedStr(f' {short_name}')
             if arg_type != '1':
                 usage_str += StylizedStr(f'[{arg_type}]')
-        usage_str += StylizedStr(']')
+        if brackets:
+            usage_str += StylizedStr(']')
         return usage_str
 
     def helper_command_help_str(self, help_str: list[tuple[str, str]]) -> StylizedStr:
@@ -495,20 +510,31 @@ class Messages:
         return help_stylized_str
 
     def command_help_str(self, command_name: str, positional_arguments: list[tuple[str, str]],
-                         optional_arguments: list[tuple[str, str, str]], help_str: list[str]) -> None:
+                         optional_arguments: list[tuple[str, str, str]], help_str: list[str],
+                         mutually_exclusive: bool) -> None:
         '''
         Print the help string for the command.
         :param command_name: the command's name
         :param positional_arguments: the positional arguments, list of (short_name, arg_type)
         :param optional_arguments: the optional arguments, list of (short_name, short_flag, arg_type)
         :param help_str: the help string, odd indices contain arguments' short names or short flags
+        :param mutually_exclusive: are optional arguments mutually exclusive
         '''
         # the usage str
         usage_str = StylizedStr(command_name, COMMAND_COLOR)
         for short_name, arg_type in positional_arguments:
             usage_str += StylizedStr(' ') + self.helper_command_positional_argument_usage(short_name, arg_type)
-        for short_name, flag, arg_type in optional_arguments:
-            usage_str += StylizedStr(' ') + self.helper_command_optional_argument_usage(flag, short_name, arg_type)
+        if not mutually_exclusive or len(optional_arguments) == 0:  # print one by one
+            for short_name, flag, arg_type in optional_arguments:
+                usage_str += StylizedStr(' ')
+                usage_str += self.helper_command_optional_argument_usage(flag, short_name, arg_type, True)
+        else:  # print together since mutually exclusive
+            usage_str += StylizedStr(' [')
+            for idx, (short_name, flag, arg_type) in enumerate(optional_arguments):
+                if idx > 0:
+                    usage_str += StylizedStr(' | ')
+                usage_str += self.helper_command_optional_argument_usage(flag, short_name, arg_type, False)
+            usage_str += StylizedStr(']')
         self.log.print(usage_str)
 
         # the help str

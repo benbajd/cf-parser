@@ -16,11 +16,13 @@ class Command(Generic[T]):
     command: T  # the command's enum
     positional_arguments: list[PositionalArgument]  # positional arguments
     optional_arguments: list[OptionalArgument]  # optional arguments
+    mutually_exclusive: bool  # are optional arguments mutually exclusive
     message: Messages  # the message object that handles printing
     help_str: list[str]  # the help string, odd indices contain short names or short flags of arguments
 
     def __init__(self, short_name: str, long_name: str, command: T, positional_arguments: list[PositionalArgument],
-                 optional_arguments: list[OptionalArgument], message: Messages, help_str: list[str]) -> None:
+                 optional_arguments: list[OptionalArgument], mutually_exclusive: bool,
+                 message: Messages, help_str: list[str]) -> None:
         '''
         Init Command. The dict_name values of all arguments must be distinct.
         :param short_name: the command's short name
@@ -28,6 +30,7 @@ class Command(Generic[T]):
         :param command: the command
         :param positional_arguments: the positional arguments
         :param optional_arguments: the optional arguments
+        :param mutually_exclusive: are optional arguments mutually exclusive
         :param message: the message object that handles printing
         :param help_str: the help string, odd indices contain short names or short flags of arguments, no spaces at ends
         '''
@@ -36,6 +39,7 @@ class Command(Generic[T]):
         self.command = command
         self.positional_arguments = positional_arguments
         self.optional_arguments = optional_arguments
+        self.mutually_exclusive = mutually_exclusive
         self.message = message
         self.help_str = help_str
 
@@ -134,6 +138,9 @@ class Command(Generic[T]):
             if optional_parsed[optional_idx]:
                 self.message.command_repeated_optional_argument(self.get_name(), optional_argument.get_name_long())
                 return False
+            if optional_parsed.count(True) == 1 and self.mutually_exclusive:
+                self.message.command_too_many_optional_arguments_mutually_exclusive(self.get_name())
+                return False
             optional_parsed[optional_idx] = True
             num_parsed, success = process_argument(optional_argument, optional_args_group)
             if not success:
@@ -187,7 +194,8 @@ class Command(Generic[T]):
                 (argument.get_name_short(), argument.short_flag, str(argument.num_args))
                 for argument in self.optional_arguments
             ],
-            self.help_str
+            self.help_str,
+            self.mutually_exclusive
         )
 
     def print_help_str_long(self) -> None:
