@@ -3,6 +3,12 @@
 from typing import TypeVar, Optional
 from prints import Print, StylizedStr, Colors
 from verdicts import CompileVerdict, RunVerdict
+import configs
+
+HEADER_USERNAME_COLOR = Colors.ORANGE
+HEADER_CONTEST_COLOR = Colors.GREEN
+HEADER_PROBLEM_COLOR = Colors.PINK
+HEADER_MODES_COLOR = Colors.LIGHT_BLUE
 
 # the colors for compile verdicts
 COMPILE_VERDICT_COLORS: dict[CompileVerdict, Colors] = {
@@ -51,6 +57,39 @@ class Messages:
         self.log.print(StylizedStr('hi'))
 
     # GETTING USER INPUT
+
+    def get_command_problem(self, contest_id: str, problem_id: str, time_limit: float, num_testcases: tuple[int, int],
+                            testcase_mode: str, checker: str) -> list[str]:
+        '''
+        Print the command suite problem header and get the args.
+        :param contest_id: contest's id
+        :param problem_id: problem's id
+        :param time_limit: the time limit
+        :param num_testcases: the number of testcases and the number of multitests or 0 if not split correctly
+        :param testcase_mode: the mode of running testcases
+        :param checker: the checker
+        :return: the args
+        '''
+        modes_delim = StylizedStr('|', Colors.GRAY)
+        header_str = (
+            StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr('/')  # username
+            + StylizedStr(contest_id, HEADER_CONTEST_COLOR) + StylizedStr('/')  # contest
+            + StylizedStr(problem_id, HEADER_PROBLEM_COLOR) + StylizedStr(' ')  # problem
+            + StylizedStr('[')
+            + StylizedStr('tl', HEADER_MODES_COLOR)  # time limit
+            + StylizedStr(str(time_limit)) + modes_delim
+            + StylizedStr('io', HEADER_MODES_COLOR)  # num testcases
+            + StylizedStr(f'{num_testcases[0]}+{num_testcases[1]}') + modes_delim
+            + StylizedStr('tm', HEADER_MODES_COLOR)  # testcase mode
+            + StylizedStr(testcase_mode) + modes_delim
+            + StylizedStr('ch', HEADER_MODES_COLOR)  # checker
+            + StylizedStr(checker)
+            + StylizedStr('] ')
+            + StylizedStr('% ')
+        )
+        self.log.print(header_str, False)
+        args = input().split()
+        return args
 
     def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
         '''

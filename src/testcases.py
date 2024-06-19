@@ -193,7 +193,7 @@ class TestCase:
                 if self.message.input_two_options(decision_str):  # user wants to split
                     # wait on the user to edit the multitests in the text editor
                     Execution.execute(
-                        configs.TEXT_EDITOR_COMMAND_WAIT + [str(multitest_file)],
+                        configs.text_editor_command_wait + [str(multitest_file)],
                         None
                     )
                     # check if split correctly

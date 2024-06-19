@@ -80,7 +80,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             '-f', '--file', 'file',
             1, OptionalArgumentMode.CHOICES, self.message,
             'the file to edit, one of "m" for main, "c" for checker, "b" for bruteforce, or "g" for generator',
-            ['main'],
+            ['m'],
             choices=['m', 'c', 'b', 'g']
         )
         command_edit = Command(
@@ -89,7 +89,8 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             self.message,
             [
                 'Edit the .cpp files of', arg_edit_problems.get_name_short(), ', or all if', arg_edit_all.short_flag,
-                'is set. When', arg_edit_file.short_flag, 'is not given, edit main, otherwise edit the file',
+                'is set. Also always edits the current problem even if not given. '
+                'When', arg_edit_file.short_flag, 'is not given, edit main, otherwise edit the file',
                 arg_edit_file.get_name_short(), '.'
              ]
         )
@@ -100,7 +101,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             '-f', '--file', 'file',
             1, OptionalArgumentMode.CHOICES, self.message,
             'the file to run, one of "m" for main, "c" for checker, "b" for bruteforce, or "g" for generator',
-            ['main'],
+            ['m'],
             choices=['m', 'c', 'b', 'g']
         )
         command_custom_invocation = Command(

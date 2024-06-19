@@ -2,8 +2,8 @@
 
 # TODO: store locally and check when starting the parser
 
-CODE_EDITOR_COMMAND = []
-CODE_EDITOR_COMMAND_WAIT = []
+username = ''
 
-TEXT_EDITOR_COMMAND = []
-TEXT_EDITOR_COMMAND_WAIT = []
+code_editor_command = []
+
+text_editor_command_wait = []

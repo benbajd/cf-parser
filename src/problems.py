@@ -10,6 +10,7 @@ from messages import Messages
 from testcases import TestCase, TestCaseMode, TestCaseType, IOPair
 from checkers import Checker, CheckerTokens, CheckerYesNo, CheckerCustom
 from runners import Runner
+from commandsuites import CommandSuiteProblem, CommandsProblem
 
 
 class ProblemOffline(TypedDict):
@@ -171,6 +172,32 @@ class Problem:
         }
         self.dirs.get_problem_data().write_file(json.dumps(problem_data))
 
+    def process_commands(self, problem_ids: list[str]) -> tuple[CommandsProblem, dict[str, str]]:
+        '''
+        Process commands until a command not executable in problem is given.
+        :param problem_ids: the problem ids in this contest
+        :return: the first parsed command and args not executable in problem
+        '''
+        command_suite = CommandSuiteProblem(self.message, problem_ids, len(self.all_testcases))
+
+        while True:
+            # print the header and get the args
+            args = self.message.get_command_problem(
+                self.contest_id, self.problem_id,
+                self.time_limit, self.count_testcases(),
+                'o' if self.testcase_mode == TestCaseMode.ONE else 'm', self.checker.one_char_name
+            )
+
+            # parse the args
+            parsed_command_args = command_suite.parse(args)
+
+            # continue on errors
+            if parsed_command_args is None:
+                continue
+
+            # execute the command
+            command, parsed_args = parsed_command_args
+
     def run(self) -> None:
         '''
         Run the problem.
@@ -183,3 +210,14 @@ class Problem:
             self.checker,
             self.testcase_mode
         )
+
+    def count_testcases(self) -> tuple[int, int]:
+        '''
+        Count the number of testcases in both testcase modes.
+        :return: the number of testcases and the number of multitests or 0 if not split correctly
+        '''
+        num_testcases = len(self.all_testcases)
+        num_multitests = 0
+        if all(testcase.set_multitest_mode() for testcase in self.all_testcases):
+            num_multitests = sum(len(testcase.get_testcases(TestCaseMode.MULTIPLE)) for testcase in self.all_testcases)
+        return num_testcases, num_multitests
