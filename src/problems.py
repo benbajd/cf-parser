@@ -65,6 +65,8 @@ class Problem:
         self.folder.create_folder()
         self.dirs.get_main().write_file(basefiles.MAIN_CPP)
         self.dirs.get_custom_checker().write_file(basefiles.CHECKER_CPP)
+        self.dirs.get_bruteforce().write_file(basefiles.BRUTEFORCE_CPP)
+        self.dirs.get_generator().write_file(basefiles.GENERATOR_CPP)
         self.all_testcases: list[TestCase] = []
         for io_id, (io_input, io_output) in enumerate(scraped_data['io']):
             # get the entire testcase

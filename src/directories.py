@@ -127,6 +127,34 @@ class DirsProblem:
         '''
         return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_checker.out')
 
+    def get_generator(self) -> File:
+        '''
+        Get the generator file.
+        :return: the generator file
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_generator.cpp')
+
+    def get_generator_compiled(self) -> File:
+        '''
+        Get the generator file compiled.
+        :return: the generator file compiled
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_generator.out')
+
+    def get_bruteforce(self) -> File:
+        '''
+        Get the bruteforce file.
+        :return: the bruteforce file
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_bruteforce.cpp')
+
+    def get_bruteforce_compiled(self) -> File:
+        '''
+        Get the bruteforce file compiled.
+        :return: the bruteforce file compiled
+        '''
+        return self.folder_problem.down_file(f'{self.contest_id}{self.problem_id}_bruteforce.out')
+
     def get_problem_data(self) -> File:
         '''
         Get the problem data file.
