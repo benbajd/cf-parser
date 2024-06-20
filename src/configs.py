@@ -8,7 +8,7 @@ config_folder = Folder(['~', '.config', 'cf-parser'])
 
 username = ''
 
-code_editor_command = []
+cpp_compiler = ''
 
 text_editor_command_wait = []
 

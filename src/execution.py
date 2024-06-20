@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Optional
 from enum import IntEnum
 from paths import File
+import configs
 
 
 @dataclass
@@ -62,7 +63,7 @@ class Execution:
         :param file_out: the output .out file
         :return: the result of compile
         '''
-        execute_result = Execution.execute(['g++-13', '-std=c++20', str(file), '-o', str(file_out)], None)
+        execute_result = Execution.execute([configs.cpp_compiler, '-std=c++20', str(file), '-o', str(file_out)], None)
         return CompileResult(execute_result.return_code == 0)
 
     @staticmethod

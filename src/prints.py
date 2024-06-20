@@ -47,6 +47,14 @@ class EscapeCodes(Enum):
     SHOW_CURSOR: str = '\033[?25h'  # show cursor
 
 
+def get_terminal_width() -> int:
+    '''
+    Get the number of columns in the terminal.
+    :return: the terminal width
+    '''
+    return os.get_terminal_size().columns
+
+
 @dataclass
 class StylizedBaseStr:
     '''An immutable uniformly stylized str.'''
@@ -239,8 +247,8 @@ class PrintTerminal(Print):
         print(EscapeCodes.HIDE_CURSOR.value, end='')
 
         # print the string
-        for base_string in string.string:
-            self.print_base(base_string)
+        print_str = ''.join(self.print_base(base_string) for base_string in string.string)
+        print(print_str, end='')
 
         # add a newline and show the cursor if final=True and flush the output
         if final:
@@ -254,7 +262,7 @@ class PrintTerminal(Print):
         :param string: the string to print
         '''
         # move cursor to the right column on the previous line
-        terminal_width: int = os.get_terminal_size().columns
+        terminal_width: int = get_terminal_width()
         print(EscapeCodes.MOVE_UP.value(1), end='')
         print(EscapeCodes.MOVE_TO_COLUMN.value(terminal_width - len(string)), end='')
 

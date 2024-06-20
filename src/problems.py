@@ -201,20 +201,39 @@ class Problem:
             command, parsed_args = parsed_command_args
 
             if command == CommandsProblem.EDIT:
-                return command, parsed_args
+                return command, parsed_args  # process by the contest
+
+            elif command == CommandsProblem.CUSTOM_INVOCATION:
+                # get the file name and file pair
+                one_char_name: Literal['m', 'c', 'b', 'g'] = json.loads(parsed_args['file'])
+                long_name = {'m': 'main', 'c': 'checker', 'b': 'bruteforce', 'g': 'generator'}[one_char_name]
+                file_cpp, file_out = self.get_cpp_file_pair(one_char_name)
+
+                # compile and run in custom invocation
+                self.runner.custom_invocation(file_cpp, file_out, one_char_name, long_name)
+                continue
+
+    def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
+        '''
+        Get the .cpp and the .out pair of a file.
+        :param file: the file, one of main, checker, bruteforce, or generator
+        :return: the .cpp and the .out file pair
+        '''
+        file_pairs = {
+            'm': (self.dirs.get_main(), self.dirs.get_main_compiled()),
+            'c': (self.dirs.get_custom_checker(), self.dirs.get_custom_checker_compiled()),
+            'b': (self.dirs.get_bruteforce(), self.dirs.get_bruteforce_compiled()),
+            'g': (self.dirs.get_generator(), self.dirs.get_generator_compiled())
+        }
+        return file_pairs[file]
 
     def edit(self, file_cpp: Literal['m', 'c', 'b', 'g']) -> None:
         '''
         Edit the .cpp file of file_cpp.
         :param file_cpp: the .cpp file to edit, one of main, checker, bruteforce, or generator
         '''
-        files_cpp = {
-            'm': self.dirs.get_main(),
-            'c': self.dirs.get_custom_checker(),
-            'b': self.dirs.get_bruteforce(),
-            'g': self.dirs.get_generator()
-        }
-        Execution.execute(configs.code_editor_command + [str(files_cpp[file_cpp])], None)
+        file_edit = self.get_cpp_file_pair(file_cpp)[0]
+        Execution.execute(configs.code_editor_command + [str(file_edit)], None)
 
     def run(self) -> None:
         '''

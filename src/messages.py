@@ -1,7 +1,7 @@
 '''Implements the messages class for printing messages and getting user input.'''
 
 from typing import TypeVar, Optional, Literal
-from prints import Print, StylizedStr, Colors
+from prints import Print, StylizedStr, Colors, get_terminal_width
 from verdicts import CompileVerdict, RunVerdict
 import configs
 
@@ -120,6 +120,20 @@ class Messages:
         '''
         return word + ('s' if num != 1 else '')
 
+    def helper_add_to_end(self, string: StylizedStr, end_string: StylizedStr) -> StylizedStr:
+        '''
+        Add an end string to a string so that it appears right justified.
+        :param string: the string
+        :param end_string: the end string
+        :return: the string with the end string right justified
+        '''
+        # find the number of spaces to make end_string right justified
+        num_spaces = get_terminal_width() - len(string) - len(end_string) - 1
+
+        # add spaces between string and end_string
+        return string + StylizedStr(' ' * num_spaces) + end_string
+
+
     # PROBLEM EDIT
 
     def edit_problem_files(self, problem_ids: list[str], file_cpp: Literal['m', 'c', 'b', 'g']) -> None:
@@ -145,7 +159,7 @@ class Messages:
         # print the edit str
         self.log.print(edit_str)
 
-    # RUNNER
+    # RUNNER HELPERS
 
     T = TypeVar('T', CompileVerdict, RunVerdict)
 
@@ -176,6 +190,72 @@ class Messages:
             else StylizedStr(']', colors[bracket_verdict], True)
         )
         return bracket_str
+
+    def helper_get_compilation_error_string(self, file_names: list[str]) -> StylizedStr:
+        '''
+        Get the compilation error string.
+        :param file_names: the names of files that got a compilation error
+        :return: the compilation error string
+        '''
+        compilation_error_str = StylizedStr('compilation error, stopping: ')
+        compilation_error_str += StylizedStr(
+            'CE: ' + ', '.join(file_names),
+            COMPILE_VERDICT_COLORS[CompileVerdict.COMPILATION_ERROR],
+            True
+        )
+        return compilation_error_str
+
+    # PROBLEM CUSTOM INVOCATION
+
+    def custom_invocation_start(self, one_char_name: str) -> None:
+        '''
+        Print the custom invocation start.
+        :param one_char_name: one char name of the file that is compiling
+        '''
+        start_str = self.helper_get_bracket_verdicts(
+            [CompileVerdict.COMPILING],
+            [one_char_name],
+            COMPILE_VERDICT_COLORS,
+            CompileVerdict.COMPILING,
+            None
+        )
+        start_str = self.helper_add_to_end(start_str, StylizedStr('compiling'))
+        self.log.status_updates(start_str)
+
+    def custom_invocation_finish(self, one_char_name: str, file_name: str,
+                                 compile_verdict: CompileVerdict, total_time: float) -> None:
+        '''
+        Print the custom invocation finish.
+        :param one_char_name: one char name of the file that finished compiling
+        :param file_name: the name of the file that finished compiling
+        :param compile_verdict: the compile verdict
+        :param total_time: the total compile time elapsed
+        '''
+        # print the bracket verdicts
+        finish_str = self.helper_get_bracket_verdicts(
+            [compile_verdict],
+            [one_char_name],
+            COMPILE_VERDICT_COLORS,
+            CompileVerdict.COMPILING,
+            compile_verdict
+        )
+        self.log.status_updates(finish_str, True)
+
+        # print the total time elapsed
+        self.log.update_previous(StylizedStr(f'took {total_time:.3f}s'))
+
+        # print the running in custom invocation string if compiled successfully
+        # or the compilation error string otherwise
+        if compile_verdict == CompileVerdict.SUCCESS:
+            run_str = StylizedStr('running ')
+            run_str += StylizedStr(file_name, bold=True)
+            run_str += StylizedStr(' in custom invocation')
+            self.log.print(run_str)
+        elif compile_verdict == CompileVerdict.COMPILATION_ERROR:
+            compilation_error_str = self.helper_get_compilation_error_string([file_name])
+            self.log.print(compilation_error_str)
+
+    # RUNNER
 
     def runner_start(self, compile_count: int, run_count: int) -> None:
         '''
@@ -226,7 +306,7 @@ class Messages:
 
     def runner_finish_after_compile(self, compile_verdicts: list[CompileVerdict], total_time: float) -> None:
         '''
-        Print the runner finish after at least one file get a compilation error.
+        Print the runner finish after at least one file gets a compilation error.
         :param compile_verdicts: the compile verdicts, first file is main, second is custom checker (optional)
         :param total_time: the total runner time elapsed
         '''
@@ -234,17 +314,12 @@ class Messages:
         self.log.update_previous(StylizedStr(f'took {total_time:.3f}s'))
 
         # print the compilation error message
-        final_str = StylizedStr('compilation error, stopping: ')
         file_names = ['main', 'checker']
         compilation_errors = [
             file_name for file_name, compile_verdict in zip(file_names, compile_verdicts)
             if compile_verdict == CompileVerdict.COMPILATION_ERROR
         ]
-        final_str += StylizedStr(
-            'CE: ' + ', '.join(compilation_errors),
-            COMPILE_VERDICT_COLORS[CompileVerdict.COMPILATION_ERROR],
-            True
-        )
+        final_str = self.helper_get_compilation_error_string(compilation_errors)
         self.log.print(final_str)
 
     def runner_run_update(self, compile_verdicts: list[CompileVerdict], compile_bracket_verdict: CompileVerdict,

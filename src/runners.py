@@ -1,5 +1,6 @@
 '''Implements the runner class.'''
 
+from typing import Literal
 import time
 from paths import File
 from verdicts import CompileVerdict, RunVerdict
@@ -22,6 +23,31 @@ class Runner:
         :param message: the message object that handles printing
         '''
         self.message = message
+
+    def custom_invocation(self, file_cpp: File, file_out: File, one_char_name: str, long_name: str) -> None:
+        '''
+        Run a file in custom invocation.
+        :param file_cpp: the .cpp file
+        :param file_out: the .out file
+        :param one_char_name: short name of the file to compile and run
+        :param long_name: long name of the file to compile and run
+        '''
+        # start compiling
+        start_time = time.perf_counter()
+        self.message.custom_invocation_start(one_char_name)
+        compile_result = Execution.compile(file_cpp, file_out)
+
+        # finish compiling
+        end_time = time.perf_counter()
+        compile_verdict = (
+            CompileVerdict.SUCCESS if compile_result.success
+            else CompileVerdict.COMPILATION_ERROR
+        )
+        self.message.custom_invocation_finish(one_char_name, long_name, compile_verdict, end_time - start_time)
+
+        # run in custom invocation if compiled successfully
+        if compile_result.success:
+            Execution.execute(['open', '-a', 'Terminal', str(file_out)], None)
 
     def run(self, run_testcases: list[TestCase], main: File, main_out: File,
             time_limit: float, checker: Checker, testcase_mode: TestCaseMode) -> None:
