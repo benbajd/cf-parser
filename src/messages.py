@@ -1,6 +1,6 @@
 '''Implements the messages class for printing messages and getting user input.'''
 
-from typing import TypeVar, Optional
+from typing import TypeVar, Optional, Literal
 from prints import Print, StylizedStr, Colors
 from verdicts import CompileVerdict, RunVerdict
 import configs
@@ -9,6 +9,7 @@ HEADER_USERNAME_COLOR = Colors.ORANGE
 HEADER_CONTEST_COLOR = Colors.GREEN
 HEADER_PROBLEM_COLOR = Colors.PINK
 HEADER_MODES_COLOR = Colors.LIGHT_BLUE
+HEADER_MODES_DELIM_COLOR = Colors.GRAY
 
 # the colors for compile verdicts
 COMPILE_VERDICT_COLORS: dict[CompileVerdict, Colors] = {
@@ -70,7 +71,7 @@ class Messages:
         :param checker: the checker
         :return: the args
         '''
-        modes_delim = StylizedStr('|', Colors.GRAY)
+        modes_delim = StylizedStr('|', HEADER_MODES_DELIM_COLOR)
         header_str = (
             StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr('/')  # username
             + StylizedStr(contest_id, HEADER_CONTEST_COLOR) + StylizedStr('/')  # contest
@@ -107,6 +108,42 @@ class Messages:
         # read the input and check if it matches the first option
         input_str = self.log.get_input(decision_str, StylizedStr(), configs.history_two_options)
         return input_str.lower() == first_option.lower()
+
+    # HELPER FUNCTIONS
+
+    def helper_get_plural(self, word: str, num: int) -> str:
+        '''
+        Get the correct singular or plural form of a word.
+        :param word: the word
+        :param num: the number
+        :return: the singular or plural form of a word
+        '''
+        return word + ('s' if num != 1 else '')
+
+    # PROBLEM EDIT
+
+    def edit_problem_files(self, problem_ids: list[str], file_cpp: Literal['m', 'c', 'b', 'g']) -> None:
+        '''
+        Print that the files are now open for editing.
+        :param problem_ids: the problem ids to edit
+        :param file_cpp: the .cpp file to edit, one of main, checker, bruteforce, or generator
+        '''
+        # get the file str
+        edit_str = StylizedStr('editing ')
+        edit_str += StylizedStr(
+            {'m': 'main', 'c': 'checker', 'b': 'bruteforce', 'g': 'generator'}[file_cpp],
+            bold=True
+        )
+
+        # get the problem str
+        edit_str += StylizedStr(f' of {self.helper_get_plural('problem', len(problem_ids))} ')
+        for idx, problem_id in enumerate(problem_ids):
+            if idx > 0:
+                edit_str += StylizedStr(', ')
+            edit_str += StylizedStr(problem_id, HEADER_PROBLEM_COLOR)
+
+        # print the edit str
+        self.log.print(edit_str)
 
     # RUNNER
 
@@ -377,7 +414,7 @@ class Messages:
         '''
         self.log.print(
             self.helper_error_argument_header(arg_name)
-            + StylizedStr(f' expected {num_args} arguments, got {num_given}')
+            + StylizedStr(f' expected {num_args} {self.helper_get_plural('argument', num_args)}, got {num_given}')
         )
 
     def argument_not_int(self, arg_name: str, arg: str) -> None:

@@ -11,6 +11,8 @@ from testcases import TestCase, TestCaseMode, TestCaseType, IOPair
 from checkers import Checker, CheckerTokens, CheckerYesNo, CheckerCustom
 from runners import Runner
 from commandsuites import CommandSuiteProblem, CommandsProblem
+from execution import Execution
+import configs
 
 
 class ProblemOffline(TypedDict):
@@ -197,6 +199,22 @@ class Problem:
 
             # execute the command
             command, parsed_args = parsed_command_args
+
+            if command == CommandsProblem.EDIT:
+                return command, parsed_args
+
+    def edit(self, file_cpp: Literal['m', 'c', 'b', 'g']) -> None:
+        '''
+        Edit the .cpp file of file_cpp.
+        :param file_cpp: the .cpp file to edit, one of main, checker, bruteforce, or generator
+        '''
+        files_cpp = {
+            'm': self.dirs.get_main(),
+            'c': self.dirs.get_custom_checker(),
+            'b': self.dirs.get_bruteforce(),
+            'g': self.dirs.get_generator()
+        }
+        Execution.execute(configs.code_editor_command + [str(files_cpp[file_cpp])], None)
 
     def run(self) -> None:
         '''
