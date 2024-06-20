@@ -70,7 +70,7 @@ class StylizedBaseStr:
 
 
 class StylizedStr:
-    '''A mutable stylized str.'''
+    '''An immutable stylized str.'''
     string: list[StylizedBaseStr]
 
     def __init__(self, string: str = '', color: Colors = Colors.DEFAULT, bold: bool = False) -> None:
@@ -90,7 +90,7 @@ class StylizedStr:
         :returns: the stylized string
         '''
         new_string = StylizedStr()
-        new_string.string = string if string is not None else []
+        new_string.string = string.copy() if string is not None else []
         return new_string
 
     def __len__(self) -> int:
@@ -117,12 +117,11 @@ class StylizedStr:
 
     def __iadd__(self, other: "StylizedStr") -> "StylizedStr":
         '''
-        Add the other stylized string to the current one in-place.
+        Add the other stylized string to the current one by creating a new stylized string.
         :param other: the other stylized string to add, can be a stylized base string
         :returns: the modified current stylized string
         '''
-        self.string = (self + other).string
-        return self
+        return self.__add__(other)
 
 
 class Print(Protocol):
