@@ -6,6 +6,7 @@ from dataclasses import dataclass
 import os
 from functools import partial
 from paths import File
+import gnureadline as readline
 
 
 class Colors(IntEnum):
@@ -125,13 +126,21 @@ class StylizedStr:
 
 
 class Print(Protocol):
-    '''An immutable class that handles printing to the terminal or a file.'''
+    '''An immutable class that handles printing to the terminal or a file and getting user input.'''
 
-    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
+    def print(self, string: StylizedStr) -> None:
         '''
         Print the string.
         :param string: the string to print
-        :param end_newline: True if a newline should be printed at the end or False otherwise
+        '''
+
+    def get_input(self, string: StylizedStr, input_style: StylizedStr, history_file: File) -> str:
+        '''
+        Prompt a string and get user input.
+        :param string: the prompt
+        :param input_style: the style of the input, the string should be empty
+        :param history_file: the history file with previous input
+        :return: the user input
         '''
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
@@ -150,7 +159,7 @@ class Print(Protocol):
 
     def handle_input(self, string: StylizedStr) -> None:
         '''
-        Process the input string.
+        Process the input string. Should only be called by get_input.
         :param string: the input string
         '''
 
@@ -158,35 +167,63 @@ class Print(Protocol):
 class PrintTerminal(Print):
     '''Implements Print in the terminal.'''
 
-    def print_base(self, string: StylizedBaseStr) -> None:
+    def print_base(self, string: StylizedBaseStr) -> str:
         '''
         Print a stylized base string to the terminal.
         :param string: the string to print
+        :return: the string to print as a python string with ansi escape codes
         '''
+        print_str = ''
+
         # remove any previous styling
-        print(EscapeCodes.RESET.value, end='')
+        print_str += EscapeCodes.RESET.value
 
         # set current styling
         if string.color != Colors.DEFAULT:
-            print(EscapeCodes.COLORED.value(string.color), end='')
+            print_str += EscapeCodes.COLORED.value(string.color)
         if string.bold:
-            print(EscapeCodes.BOLD.value, end='')
+            print_str += EscapeCodes.BOLD.value
 
-        # print the string
-        print(string.string, end='')
+        # add the string
+        print_str += string.string
 
-    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
+        return print_str
+
+    def print(self, string: StylizedStr) -> None:
         '''
         Print a stylized string to the terminal with a newline at the end and flush the output.
         :param string: the string to print
-        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
-        # print the string
-        for base_string in string.string:
-            self.print_base(base_string)
+        # get the string to print
+        print_str = ''.join(self.print_base(base_string) for base_string in string.string)
 
-        # print a newline and flush the output
-        print(end=('\n' if end_newline else ''), flush=True)
+        # print the string with a newline and flush the output
+        print(print_str, flush=True)
+
+    def get_input(self, string: StylizedStr, input_style: StylizedStr, history_file: File) -> str:
+        '''
+        Prompt a string and get user input.
+        :param string: the prompt
+        :param input_style: the style of the input, the string should be empty
+        :param history_file: the history file with previous input
+        :return: the user input
+        '''
+        # set the input history
+        readline.clear_history()
+        readline.read_history_file(str(history_file))
+
+        # print the prompt and get user input
+        prompt_str = ''.join(self.print_base(base_string) for base_string in string.string)
+        prompt_str += ''.join(self.print_base(base_style) for base_style in input_style.string)
+        user_input = input(prompt_str)
+
+        # handle input and write the updated history file
+        self.handle_input(StylizedStr(user_input))
+        readline.set_history_length(100)  # store up to 100 previous commands
+        readline.write_history_file(str(history_file))
+
+        # return user input
+        return user_input
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -227,7 +264,7 @@ class PrintTerminal(Print):
 
     def handle_input(self, string: StylizedStr) -> None:
         '''
-        Do nothing in the terminal case since the input string is already displayed.
+        Do nothing in the terminal case since the input string is already displayed. Should only be called by get_input.
         :param string: the input string
         '''
         pass
@@ -246,13 +283,23 @@ class PrintFile(Print):
         self.file = file
         self.status_updates_temp_string = ''
 
-    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
+    def print(self, string: StylizedStr) -> None:
         '''
         Print a stylized string to the file, omitting all styles.
         :param string: the string to print
-        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
-        self.file.append_file(string.plain_string() + ('\n' if end_newline else ''))
+        self.file.append_file(string.plain_string() + '\n')
+
+    def get_input(self, string: StylizedStr, input_style: StylizedStr, history_file: File) -> str:
+        '''
+        Prompt a string omitting all styles but don't get user input since this is a file.
+        :param string: the prompt
+        :param input_style: the style of the input, the string should be empty
+        :param history_file: the history file with previous input
+        :return: the empty string
+        '''
+        self.file.append_file(string.plain_string() + '\n')
+        return ''
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -281,7 +328,7 @@ class PrintFile(Print):
 
     def handle_input(self, string: StylizedStr) -> None:
         '''
-        Print the input string to the file by omitting all styles.
+        Print the input string to the file by omitting all styles. Should only be called by get_input.
         :param string: the input string
         '''
         self.file.append_file(string.plain_string() + '\n')
@@ -298,13 +345,22 @@ class PrintFileInputOnly(Print):
         '''
         self.file = file
 
-    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
+    def print(self, string: StylizedStr) -> None:
         '''
         Don't print the string since it only logs input.
         :param string: the string to print
-        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
         pass
+
+    def get_input(self, string: StylizedStr, input_style: StylizedStr, history_file: File) -> str:
+        '''
+        Don't print the string or get user input since it only logs input.
+        :param string: the prompt
+        :param input_style: the style of the input, the string should be empty
+        :param history_file: the history file with previous input
+        :return: the empty string
+        '''
+        return ''
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -318,13 +374,13 @@ class PrintFileInputOnly(Print):
     def update_previous(self, string: StylizedStr) -> None:
         '''
         Do not print the string since it only logs input.
-        :param string: thw string to print
+        :param string: the string to print
         '''
         pass
 
     def handle_input(self, string: StylizedStr) -> None:
         '''
-        Print the string to the file by omitting all styles and add a timestamp.
+        Print the string to the file by omitting all styles and add a timestamp. Should only be called by get_input.
         :param string: the input string
         '''
         # TODO: add a timestamp
@@ -333,23 +389,43 @@ class PrintFileInputOnly(Print):
 
 class PrintBatched(Print):
     '''Implements Print to multiple output targets.'''
-    targets: list[Print]
+    target_terminal: PrintTerminal
+    target_files: list[PrintFile | PrintFileInputOnly]
 
-    def __init__(self, targets: list[Print]) -> None:
+    def __init__(self, target_terminal: PrintTerminal, target_files: list[PrintFile | PrintFileInputOnly]) -> None:
         '''
         Init the PrintBatched.
-        :param targets: the output targets
+        :param target_terminal: the target terminal
+        :param target_files: the target files
         '''
-        self.targets = targets.copy()
+        self.target_terminal = target_terminal
+        self.target_files = target_files.copy()
 
-    def print(self, string: StylizedStr, end_newline: bool = True) -> None:
+    def print(self, string: StylizedStr) -> None:
         '''
         Print the string.
         :param string: the string to print
-        :param end_newline: True if a newline should be printed at the end or False otherwise
         '''
-        for target in self.targets:
-            target.print(string, end_newline)
+        self.target_terminal.print(string)
+        for target_file in self.target_files:
+            target_file.print(string)
+
+    def get_input(self, string: StylizedStr, input_style: StylizedStr, history_file: File) -> str:
+        '''
+        Prompt a string and get user input.
+        :param string: the prompt
+        :param input_style: the style of the input, the string should be empty
+        :param history_file: the history file with previous input
+        :return: the user input
+        '''
+        # get input from the terminal
+        user_input = self.target_terminal.get_input(string, input_style, history_file)
+
+        # handle input in all the files
+        self.handle_input(StylizedStr(user_input))
+
+        # return user input
+        return user_input
 
     def status_updates(self, string: StylizedStr, final: bool = False) -> None:
         '''
@@ -358,21 +434,24 @@ class PrintBatched(Print):
         :param string: the current status update string
         :param final: should be True on the last call and False before that
         '''
-        for target in self.targets:
-            target.status_updates(string, final)
+        self.target_terminal.status_updates(string, final)
+        for file_target in self.target_files:
+            file_target.status_updates(string, final)
 
     def update_previous(self, string: StylizedStr) -> None:
         '''
         Update the previous print call by printing a string to the end of it.
         :param string: the string to add to the previous printed string
         '''
-        for target in self.targets:
-            target.update_previous(string)
+        self.target_terminal.update_previous(string)
+        for file_target in self.target_files:
+            file_target.update_previous(string)
 
     def handle_input(self, string: StylizedStr) -> None:
         '''
-        Process the input string.
+        Process the input string. Should only be called by get_input.
         :param string: the input string
         '''
-        for target in self.targets:
-            target.handle_input(string)
+        # only handle input in target files since the target terminal already did when calling its get_input
+        for file_target in self.target_files:
+            file_target.handle_input(string)

@@ -13,7 +13,7 @@ class Folder:
         Init the Folder.
         :param path: the path to the folder
         '''
-        self.path = [] if path is None else path.copy()
+        self.path = [] if path is None else expand_home_directory(path.copy())
 
     def __str__(self) -> str:
         '''
@@ -75,7 +75,7 @@ class File:
         Init the File.
         :param path: the path to the file
         '''
-        self.path = path.copy()
+        self.path = expand_home_directory(path.copy())
 
     def __str__(self) -> str:
         '''
@@ -121,3 +121,15 @@ class File:
         Delete the file, requires the file to exist.
         '''
         os.remove(str(self))
+
+
+def expand_home_directory(path: list[str]) -> list[str]:
+    '''
+    Expand the path's home directory to an absolute path if the path starts with '~'.
+    :param path: the path
+    :return: the path with the expanded home directory if it starts with '~' or the initial path otherwise
+    '''
+    if len(path) >= 1 and path[0] == '~':
+        return os.path.expanduser('~').split('/')[1:] + path[1:]
+    else:
+        return path

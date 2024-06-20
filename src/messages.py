@@ -87,9 +87,8 @@ class Messages:
             + StylizedStr('] ')
             + StylizedStr('% ')
         )
-        self.log.print(header_str, False)
-        args = input().split()
-        return args
+        args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_problem)
+        return args_str.split()
 
     def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
         '''
@@ -104,11 +103,9 @@ class Messages:
         for idx, decision_str_part in enumerate(decision_str_list):
             decision_str += StylizedStr(decision_str_part, Colors.DEFAULT, bool(idx % 2 == 1))
         decision_str += StylizedStr(f' [{first_option}/[{second_option}]] ')
-        self.log.print(decision_str, False)
 
         # read the input and check if it matches the first option
-        input_str = input()
-        self.log.handle_input(StylizedStr(input_str))
+        input_str = self.log.get_input(decision_str, StylizedStr(), configs.history_two_options)
         return input_str.lower() == first_option.lower()
 
     # RUNNER
