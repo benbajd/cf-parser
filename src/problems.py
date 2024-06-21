@@ -245,13 +245,41 @@ class Problem:
                     run_time_limit, run_checker, run_testcase_mode
                 )
 
-                # override the modes if not-override isn't set
+                # override the modes and update problem data if not-override isn't set
                 if json.loads(parsed_args['no-override'])[0] == 'False':
                     self.time_limit = run_time_limit
                     self.testcase_mode = run_testcase_mode
                     self.checker = run_checker
                     self.update_problem_data()
                 continue
+
+            elif command == CommandsProblem.SET:
+                # get the time limit
+                if json.loads(parsed_args['time-limit']) is not None:
+                    self.time_limit = float(json.loads(parsed_args['time-limit']))
+
+                # get the testcase mode
+                if json.loads(parsed_args['multitest-mode']) is not None:
+                    set_testcase_mode = (
+                        TestCaseMode.ONE if json.loads(parsed_args['multitest-mode']) == 'o'
+                        else TestCaseMode.MULTIPLE
+                    )
+                    # if user chooses multitests, check if they can be set
+                    if set_testcase_mode == TestCaseMode.MULTIPLE and not self.set_multitest_mode():
+                        set_testcase_mode = TestCaseMode.ONE
+                    self.testcase_mode = set_testcase_mode
+
+                # get the checker
+                if json.loads(parsed_args['checker']) is not None:
+                    checker_one_char_name: Literal['t', 'y', 'c'] = json.loads(parsed_args['checker'])
+                    self.checker = checkers.get_checker(
+                        checker_one_char_name,
+                        self.dirs.get_custom_checker(),
+                        self.dirs.get_custom_checker_compiled()
+                    )
+
+                # update problem data
+                self.update_problem_data()
 
     def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
         '''

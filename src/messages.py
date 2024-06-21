@@ -286,8 +286,9 @@ class Messages:
         :param compile_count: number of files to compile
         :param run_count: number of testcases to run
         '''
-        start_str = f'[{'.' * compile_count}] [{'.' * run_count}]'
-        self.log.status_updates(StylizedStr(start_str))
+        start_str = StylizedStr(f'[{'.' * compile_count}] [{'.' * run_count}]')
+        start_str = self.helper_add_to_end(start_str, StylizedStr('compiling'))
+        self.log.status_updates(start_str)
 
     def runner_compile_update(self, compile_verdicts: list[CompileVerdict], run_count: int) -> None:
         '''
@@ -326,6 +327,10 @@ class Messages:
 
         # run verdicts (empty)
         finish_str += StylizedStr(f' [{'.' * run_count}]')
+
+        # add running str if compiled successfully
+        if compile_bracket_verdict == CompileVerdict.SUCCESS:
+            finish_str = self.helper_add_to_end(finish_str, StylizedStr('running'))
 
         # print the string and do final update if one of the compilations failed
         self.log.status_updates(finish_str, compile_bracket_verdict == CompileVerdict.COMPILATION_ERROR)

@@ -36,8 +36,8 @@ class CommandsProblem(IntEnum):
     EDIT = 1  # e, edit problems[*] [--all] [-f file]
     CUSTOM_INVOCATION = 2  # c, custom-invocation [-f file]
     RUN = 3  # r, run [-t tl] [-m multitest-mode] [-c checker] [-n]
-    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [--view tc?]
     SET = 4  # s, set [-t tl] [-m multitest-mode] [-c checker]
+    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [--view tc?]
     RANDOM = 6  # n, random num [-t tl] [-c checker] [-s total-timeout]
     PASTE = 7  # p, paste
     MOVE = 8  # m, move problem
