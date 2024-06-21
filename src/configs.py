@@ -10,6 +10,8 @@ username = ''
 
 cpp_compiler = ''
 
+code_editor_command = []
+
 text_editor_command_wait = []
 
 history_commandsuite_problem: File = config_folder.down_file('commandsuite_problem_history')

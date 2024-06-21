@@ -8,7 +8,8 @@ from paths import Folder, File
 import basefiles
 from messages import Messages
 from testcases import TestCase, TestCaseMode, TestCaseType, IOPair
-from checkers import Checker, CheckerTokens, CheckerYesNo, CheckerCustom
+import checkers
+from checkers import Checker
 from runners import Runner
 from commandsuites import CommandSuiteProblem, CommandsProblem
 from execution import Execution
@@ -112,7 +113,7 @@ class Problem:
             TestCaseMode.MULTIPLE if all(testcase.set_multitest_mode() for testcase in self.all_testcases)
             else TestCaseMode.ONE
         )
-        self.checker = CheckerTokens()  # tokens by default
+        self.checker = checkers.get_checker('t')  # tokens by default
 
         # update the problem data file
         self.update_problem_data()
@@ -128,14 +129,11 @@ class Problem:
         self.problem_name = problem_data['name']
         self.time_limit = problem_data['time_limit']
         self.testcase_mode = TestCaseMode(problem_data['testcase_mode'])
-        if problem_data['checker_type'] == 't':  # TODO: factory method in checkers
-            self.checker = CheckerTokens()
-        elif problem_data['checker_type'] == 'y':
-            self.checker = CheckerYesNo()
-        elif problem_data['checker_type'] == 'c':
-            self.checker = CheckerCustom(self.dirs.get_custom_checker(), self.dirs.get_custom_checker_compiled())
-        else:
-            assert False  # need more options
+        self.checker = checkers.get_checker(
+            problem_data['checker_type'],
+            self.dirs.get_custom_checker(),
+            self.dirs.get_custom_checker_compiled()
+        )
 
         # set the testcases
         self.all_testcases: list[TestCase] = []
@@ -205,12 +203,54 @@ class Problem:
 
             elif command == CommandsProblem.CUSTOM_INVOCATION:
                 # get the file name and file pair
-                one_char_name: Literal['m', 'c', 'b', 'g'] = json.loads(parsed_args['file'])
-                long_name = {'m': 'main', 'c': 'checker', 'b': 'bruteforce', 'g': 'generator'}[one_char_name]
-                file_cpp, file_out = self.get_cpp_file_pair(one_char_name)
+                file_one_char_name: Literal['m', 'c', 'b', 'g'] = json.loads(parsed_args['file'])
+                long_name = {'m': 'main', 'c': 'checker', 'b': 'bruteforce', 'g': 'generator'}[file_one_char_name]
+                file_cpp, file_out = self.get_cpp_file_pair(file_one_char_name)
 
                 # compile and run in custom invocation
-                self.runner.custom_invocation(file_cpp, file_out, one_char_name, long_name)
+                self.runner.custom_invocation(file_cpp, file_out, file_one_char_name, long_name)
+                continue
+
+            elif command == CommandsProblem.RUN:
+                # get the time limit
+                run_time_limit = self.time_limit
+                if json.loads(parsed_args['time-limit']) is not None:
+                    run_time_limit = float(json.loads(parsed_args['time-limit']))
+
+                # get the testcase mode
+                run_testcase_mode = self.testcase_mode
+                if json.loads(parsed_args['multitest-mode']) is not None:
+                    run_testcase_mode = (
+                        TestCaseMode.ONE if json.loads(parsed_args['multitest-mode']) == 'o'
+                        else TestCaseMode.MULTIPLE
+                    )
+                    # if user chooses multitests, check if they can be set
+                    if run_testcase_mode == TestCaseMode.MULTIPLE and not self.set_multitest_mode():
+                        run_testcase_mode = TestCaseMode.ONE
+
+                # get the checker
+                run_checker = self.checker
+                if json.loads(parsed_args['checker']) is not None:
+                    checker_one_char_name: Literal['t', 'y', 'c'] = json.loads(parsed_args['checker'])
+                    run_checker = checkers.get_checker(
+                        checker_one_char_name,
+                        self.dirs.get_custom_checker(),
+                        self.dirs.get_custom_checker_compiled()
+                    )
+
+                # run
+                self.runner.run(
+                    self.all_testcases,
+                    self.dirs.get_main(), self.dirs.get_main_compiled(),
+                    run_time_limit, run_checker, run_testcase_mode
+                )
+
+                # override the modes if not-override isn't set
+                if json.loads(parsed_args['no-override'])[0] == 'False':
+                    self.time_limit = run_time_limit
+                    self.testcase_mode = run_testcase_mode
+                    self.checker = run_checker
+                    self.update_problem_data()
                 continue
 
     def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
@@ -234,6 +274,24 @@ class Problem:
         '''
         file_edit = self.get_cpp_file_pair(file_cpp)[0]
         Execution.execute(configs.code_editor_command + [str(file_edit)], None)
+
+    def set_multitest_mode(self) -> bool:
+        '''
+        Attempt to set testcase mode to multitests.
+        :return: True if multitest mode can be set, False otherwise
+        '''
+        # check if multitest mode can be set
+        if all(testcase.set_multitest_mode() for testcase in self.all_testcases):
+            return True
+
+        # try split
+        self.message.run_setting_multitest_mode_needs_split()
+        if all(testcase.split_multitests(True, True) for testcase in self.all_testcases):
+            self.message.run_multitest_mode_set_successfully()
+            return True
+        else:
+            self.message.run_multitest_mode_set_unsuccessfully()
+            return False
 
     def run(self) -> None:
         '''

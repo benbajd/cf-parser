@@ -1,6 +1,6 @@
 '''Implements the checkers for the runners to use.'''
 
-from typing import Protocol, Optional, Literal
+from typing import Protocol, Optional, Literal, ClassVar
 from enum import IntEnum
 from dataclasses import dataclass
 from paths import File
@@ -26,7 +26,7 @@ class CheckerResult:
 class Checker(Protocol):
     '''An immutable checker class.'''
 
-    one_char_name: Literal['t'] | Literal['y'] | Literal['c']  # one char name
+    one_char_name: ClassVar[Literal['t'] | Literal['y'] | Literal['c']]  # one char name
     checker_file: Optional[File]  # the checker .cpp file when custom or None otherwise
     checker_file_out: Optional[File]  # the checker .out file when custom or None otherwise
 
@@ -44,7 +44,7 @@ class Checker(Protocol):
 class CheckerTokens(Checker):
     '''Implements the token checker.'''
 
-    one_char_name: Literal['t']
+    one_char_name: ClassVar[Literal['t']] = 't'
     checker_file: None  # None since the checker isn't custom
     checker_file_out: None  # None since the checker isn't custom
 
@@ -52,7 +52,6 @@ class CheckerTokens(Checker):
         '''
         Init CheckerTokens.
         '''
-        self.one_char_name = 't'
         self.checker_file = None
         self.checker_file_out = None
 
@@ -74,12 +73,15 @@ class CheckerTokens(Checker):
             wrong_answer_reason = None
         elif len(expected_tokens) != len(user_tokens):
             result_type = CheckerResultType.WRONG_ANSWER
-            wrong_answer_reason = f'Expected {len(expected_tokens)} tokens, got {len(user_tokens)}'
+            wrong_answer_reason = (
+                f'expected {len(expected_tokens)} token{'s' if len(expected_tokens) != 1 else ''}, '
+                f'got {len(user_tokens)}'
+            )
         else:  # expected_tokens != user_tokens
             result_type = CheckerResultType.WRONG_ANSWER
             wrong_token_index = [one != two for one, two in zip(expected_tokens, user_tokens)].index(True)
             wrong_answer_reason = (
-                f'Expected "{expected_tokens[wrong_token_index]}", got "{user_tokens[wrong_token_index]}" '
+                f'expected "{expected_tokens[wrong_token_index]}", got "{user_tokens[wrong_token_index]}" '
                 f'at token {wrong_token_index + 1}'
             )
         return CheckerResult(result_type, wrong_answer_reason)
@@ -88,7 +90,7 @@ class CheckerTokens(Checker):
 class CheckerYesNo(Checker):
     '''Implements the yes/no checker.'''
 
-    one_char_name: Literal['y']
+    one_char_name: ClassVar[Literal['y']] = 'y'
     checker_file: None  # None since the checker isn't custom
     checker_file_out: None  # None since the checker isn't custom
 
@@ -96,7 +98,6 @@ class CheckerYesNo(Checker):
         '''
         Init CheckerYesNo.
         '''
-        self.one_char_name = 'y'
         self.checker_file = None
         self.checker_file_out = None
 
@@ -118,7 +119,7 @@ class CheckerYesNo(Checker):
             if user_token not in ['yes', 'no']:
                 return CheckerResult(
                     CheckerResultType.WRONG_ANSWER,
-                    f'Expected "yes"/"no", got "{user_token}" at token {token_number + 1}'
+                    f'expected "yes"/"no", got "{user_token}" at token {token_number + 1}'
                 )
 
         # call the tokens checker
@@ -128,7 +129,7 @@ class CheckerYesNo(Checker):
 class CheckerCustom(Checker):
     '''Implements the custom checker.'''
 
-    one_char_name: Literal['c']
+    one_char_name: ClassVar[Literal['c']] = 'c'
     checker_file: File  # the checker .cpp file
     checker_file_out: File  # the checker .out file
 
@@ -138,7 +139,6 @@ class CheckerCustom(Checker):
         :param checker_file: the checker .cpp file
         :param checker_file_out: the checker .out file
         '''
-        self.one_char_name = 'c'
         self.checker_file = checker_file
         self.checker_file_out = checker_file_out
 
@@ -176,3 +176,21 @@ class CheckerCustom(Checker):
             result_type = CheckerResultType.CHECKER_TIME_LIMIT_EXCEEDED
 
         return CheckerResult(result_type, wrong_answer_reason)
+
+
+def get_checker(one_char_name: Literal['t', 'y', 'c'],
+                checker_file: Optional[File] = None, checker_file_out: Optional[File] = None) -> Checker:
+    '''
+    A factory function to get the checker with the given one char name.
+    :param one_char_name: the one char name
+    :param checker_file: the checker .cpp file, should be given when one_char_name == 'c'
+    :param checker_file_out: the checker .out file, should be given when one_char_name == 'c'
+    :return: the checker
+    '''
+    if one_char_name == CheckerTokens.one_char_name:
+        return CheckerTokens()
+    elif one_char_name == CheckerYesNo.one_char_name:
+        return CheckerYesNo()
+    elif one_char_name == CheckerCustom.one_char_name:
+        assert checker_file is not None and checker_file_out is not None
+        return CheckerCustom(checker_file, checker_file_out)

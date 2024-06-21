@@ -35,14 +35,15 @@ class CommandsProblem(IntEnum):
     '''The commands for problem.'''
     EDIT = 1  # e, edit problems[*] [--all] [-f file]
     CUSTOM_INVOCATION = 2  # c, custom-invocation [-f file]
-    RUN = 3  # r, run [-t tl] [-c checker] [-m multitest-mode] [-n]
-    SET = 4  # s, set [-t tl] [-c checker] [-m multitest-mode]
+    RUN = 3  # r, run [-t tl] [-m multitest-mode] [-c checker] [-n]
     INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [--view tc?]
+    SET = 4  # s, set [-t tl] [-m multitest-mode] [-c checker]
     RANDOM = 6  # n, random num [-t tl] [-c checker] [-s total-timeout]
     PASTE = 7  # p, paste
     MOVE = 8  # m, move problem
     HELP = 9  # h, help command[?]
     QUIT = 10  # q, quit
+    # TODO: the debug command
 
 
 class CommandSuiteProblem(CommandSuite[CommandsProblem]):
@@ -115,13 +116,20 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
 
         # run command
-        # r, run [-t tl] [-c checker] [-m multitest-mode] [-n]
+        # r, run [-t tl] [-m multitest-mode] [-c checker] [-n]
         arg_run_time_limit = OptionalArgument(
             '-t', '--time-limit', 'time-limit',
             1, OptionalArgumentMode.FLOAT_RANGE, self.message,
             'the time limit',
             None,
             num_range=(0.1, math.inf)
+        )
+        arg_run_multitest_mode = OptionalArgument(
+            '-m', '--multitest-mode', 'multitest-mode',
+            1, OptionalArgumentMode.CHOICES, self.message,
+            'the multitest mode to use, one of "o" for entire testcases or "m" for multitests',
+            None,
+            choices=['o', 'm']
         )
         arg_run_checker = OptionalArgument(
             '-c', '--checker', 'checker',
@@ -130,13 +138,6 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             '"y" for yes/no checker (case-insensitive), or "c" for custom checker',
             None,
             choices=['t', 'y', 'c']
-        )
-        arg_run_multitest_mode = OptionalArgument(
-            '-m', '--multitest-mode', 'multitest-mode',
-            1, OptionalArgumentMode.CHOICES, self.message,
-            'the multitest mode to use, one of "o" for entire testcases or "m" for multitests',
-            None,
-            choices=['o', 'm']
         )
         arg_run_no_override = OptionalArgument(
             '-n', '--no-override', 'no-override',
@@ -147,27 +148,34 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         command_run = Command(
             'r', 'run', CommandsProblem.RUN,
             [], [
-                arg_run_time_limit, arg_run_checker, arg_run_multitest_mode, arg_run_no_override
+                arg_run_time_limit, arg_run_multitest_mode, arg_run_checker, arg_run_no_override
             ], False,
             self.message,
             [
                 'Run the testcases. When', arg_run_time_limit.short_flag, 'is given, set the time limit to',
-                arg_run_time_limit.get_name_short(), '. When', arg_run_checker.short_flag,
-                'is given, set the checker to', arg_run_checker.get_name_short(), '. When',
-                arg_run_multitest_mode.short_flag, 'is given, set the multitest mode to',
-                arg_run_multitest_mode.get_name_short(), '. Unless', arg_run_no_override.short_flag,
+                arg_run_time_limit.get_name_short(), '. When', arg_run_multitest_mode.short_flag,
+                'is given, set the multitest mode to', arg_run_multitest_mode.get_name_short(),
+                '. When', arg_run_checker.short_flag, 'is given, set the checker to', arg_run_checker.get_name_short(),
+                '. Unless', arg_run_no_override.short_flag,
                 'is set, override the default problem options and modes with the given ones.'
             ]
         )
 
         # set command
-        # s, set [-t tl] [-c checker] [-m multitest-mode]
+        # s, set [-t tl] [-m multitest-mode] [-c checker]
         arg_set_time_limit = OptionalArgument(
             '-t', '--time-limit', 'time-limit',
             1, OptionalArgumentMode.FLOAT_RANGE, self.message,
             'the time limit',
             None,
             num_range=(0.1, math.inf)
+        )
+        arg_set_multitest_mode = OptionalArgument(
+            '-m', '--multitest-mode', 'multitest-mode',
+            1, OptionalArgumentMode.CHOICES, self.message,
+            'the multitest mode to use, one of "o" for entire testcases or "m" for multitests',
+            None,
+            choices=['o', 'm']
         )
         arg_set_checker = OptionalArgument(
             '-c', '--checker', 'checker',
@@ -177,25 +185,18 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             None,
             choices=['t', 'y', 'c']
         )
-        arg_set_multitest_mode = OptionalArgument(
-            '-m', '--multitest-mode', 'multitest-mode',
-            1, OptionalArgumentMode.CHOICES, self.message,
-            'the multitest mode to use, one of "o" for entire testcases or "m" for multitests',
-            None,
-            choices=['o', 'm']
-        )
         command_set = Command(
             's', 'set', CommandsProblem.SET,
             [], [
-                arg_set_time_limit, arg_set_checker, arg_set_multitest_mode
+                arg_set_time_limit, arg_set_multitest_mode, arg_set_checker
             ], False,
             self.message,
             [
                 'Set the default options and modes of the problem. When', arg_set_time_limit.short_flag,
-                'is given, set the time limit to', arg_set_time_limit.get_name_short(), '. When',
-                arg_set_checker.short_flag, 'is given, set the checker to', arg_set_checker.get_name_short(),
+                'is given, set the time limit to', arg_set_time_limit.get_name_short(),
                 '. When', arg_set_multitest_mode.short_flag, 'is given, set the multitest mode to',
-                arg_set_multitest_mode.get_name_short(), '.'
+                arg_set_multitest_mode.get_name_short(), '. When', arg_set_checker.short_flag,
+                'is given, set the checker to', arg_set_checker.get_name_short(), '.'
             ]
         )
 

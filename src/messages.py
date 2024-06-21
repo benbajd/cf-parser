@@ -35,7 +35,7 @@ MAX_IO_LINES = 50  # max number of io lines before cutting off the end
 SHORT_IO_LINES = 20  # number of io lines displayed when over the limit
 
 COMMAND_COLOR = Colors.LIGHT_GREEN
-ARGUMENT_COLOR = Colors.PINK
+ARGUMENT_COLOR = Colors.PINK  # TODO: change argument color so that it doesn't clash with problem ids
 
 
 class Messages:
@@ -78,7 +78,7 @@ class Messages:
             + StylizedStr(problem_id, HEADER_PROBLEM_COLOR) + StylizedStr(' ')  # problem
             + StylizedStr('[')
             + StylizedStr('tl', HEADER_MODES_COLOR)  # time limit
-            + StylizedStr(str(time_limit)) + modes_delim
+            + StylizedStr(f'{time_limit:.0f}' if time_limit.is_integer() else f'{time_limit}') + modes_delim
             + StylizedStr('io', HEADER_MODES_COLOR)  # num testcases
             + StylizedStr(f'{num_testcases[0]}+{num_testcases[1]}') + modes_delim
             + StylizedStr('tm', HEADER_MODES_COLOR)  # testcase mode
@@ -89,7 +89,8 @@ class Messages:
             + StylizedStr('% ')
         )
         args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_problem)
-        return args_str.split()
+        # TODO: add a timestamp
+        return args_str.lower().split()
 
     def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
         '''
@@ -255,6 +256,28 @@ class Messages:
             compilation_error_str = self.helper_get_compilation_error_string([file_name])
             self.log.print(compilation_error_str)
 
+    # PROBLEM RUN
+
+    def run_setting_multitest_mode_needs_split(self) -> None:
+        '''
+        Print that setting testcase mode to multitests needs split.
+        '''
+        self.log.print(StylizedStr('setting testcase mode to multitests needs split'))
+
+    def run_multitest_mode_set_successfully(self) -> None:
+        '''
+        Print that multitest mode was set successfully.
+        '''
+        self.log.print(StylizedStr('set testcase mode to multitests successfully'))
+
+    def run_multitest_mode_set_unsuccessfully(self) -> None:
+        '''
+        Print that multitest mode was set unsuccessfully.
+        '''
+        self.log.print(
+            StylizedStr('set testcase mode to multitests unsuccessfully, using entire testcase mode instead')
+        )
+
     # RUNNER
 
     def runner_start(self, compile_count: int, run_count: int) -> None:
@@ -280,6 +303,9 @@ class Messages:
 
         # run verdicts (empty)
         update_str += StylizedStr(f' [{'.' * run_count}]')
+
+        # compiling str
+        update_str = self.helper_add_to_end(update_str, StylizedStr('compiling'))
 
         # print the string
         self.log.status_updates(update_str)
@@ -345,6 +371,9 @@ class Messages:
             run_verdicts, one_char_names, RUN_VERDICT_COLORS, RunVerdict.RUNNING, None
         )
 
+        # running str
+        update_str = self.helper_add_to_end(update_str, StylizedStr('running'))
+
         # print the string
         self.log.status_updates(update_str)
 
@@ -403,16 +432,23 @@ class Messages:
         for run_verdict, testcase_id, io_pair, main_output, wrong_answer_reason in all_iterator:
             header_str = StylizedStr(f'testcase {testcase_id}: ', TESTCASE_HEADER_COLOR, True)
             header_str += StylizedStr(short_verdict_names[run_verdict], RUN_VERDICT_COLORS[run_verdict], True)
-            if run_verdict != RunVerdict.WRONG_ANSWER:
-                # only the header when not wrong answer
+            if run_verdict in (RunVerdict.ACCEPTED, RunVerdict.CHECKER_RUNTIME_ERROR,
+                               RunVerdict.CHECKER_TIME_LIMIT_EXCEEDED):
+                # only the header when accepted or checker error
                 self.log.print(header_str)
-            else:
-                # the header with the wrong answer reason and the io otherwise
+            elif run_verdict == RunVerdict.WRONG_ANSWER:
+                # the header with the wrong answer reason and the io when wrong answer
                 header_str += StylizedStr(': ' + wrong_answer_reason, WRONG_ANSWER_REASON_COLOR, True)
                 self.log.print(header_str)
                 self.log.print(self.helper_io_one_testcase(
                     io_pair[0], main_output, io_pair[1]
                 ))
+            elif run_verdict in (RunVerdict.RUNTIME_ERROR, RunVerdict.TIME_LIMIT_EXCEEDED):
+                # the io with only input otherwise
+                self.log.print(header_str)
+                self.log.print(self.helper_io_one_testcase(io_pair[0], None, None))
+            else:
+                assert False  # need more options
 
     # MULTITESTS
 
@@ -445,9 +481,10 @@ class Messages:
             formatted_io = io
         return formatted_io + ('\n' if end_with_newline else '')
 
-    def helper_io_one_testcase(self, io_input: str, user_output: str, expected_output: str) -> StylizedStr:
+    def helper_io_one_testcase(self, io_input: str, user_output: Optional[str],
+                               expected_output: Optional[str]) -> StylizedStr:
         '''
-        Get the string containing input, user output, and expected output for one testcase.
+        Get the string containing input, user output (optional), and expected output (optional) for one testcase.
         :param io_input: the input
         :param user_output: the user output
         :param expected_output: the expected output
@@ -455,9 +492,14 @@ class Messages:
         '''
         testcase_str = StylizedStr()
         io_names = ['input', 'output', 'expected']
-        for io_id, (io_name, io_str) in enumerate(zip(io_names, [io_input, user_output, expected_output])):
+        io_strings = [io_input, user_output, expected_output]
+        io_pairs_print: list[tuple[str, str]] = [
+            (io_name, io_string)
+            for io_name, io_string in zip(io_names, io_strings) if io_string is not None
+        ]
+        for io_id, (io_name, io_str) in enumerate(io_pairs_print):
             testcase_str += StylizedStr(io_name + '\n', IO_HEADER_COLOR)
-            testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != 2))
+            testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != len(io_pairs_print) - 1))
         return testcase_str
 
     # ARGUMENTS

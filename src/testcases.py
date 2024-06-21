@@ -116,6 +116,7 @@ class TestCase:
         assert self.multiple_testcases is not None
         multitest_input = self.multiple_testcases.io_input.read_file().removeprefix(MULTITEST_HEADER)
         multitest_output = self.multiple_testcases.io_output.read_file().removeprefix(MULTITEST_HEADER)
+        # TODO: handle changed header
 
         # find the number of multitests
         first_input_line = multitest_input.splitlines()[0]
@@ -190,6 +191,8 @@ class TestCase:
                     'is' if io_file_check else 'isn\'t',
                     ' split, would you like to split it?'
                 ]
+                # TODO: rewrite file if header was changed
+                # TODO: move decision_str to messages
                 if self.message.input_two_options(decision_str):  # user wants to split
                     # wait on the user to edit the multitests in the text editor
                     Execution.execute(
