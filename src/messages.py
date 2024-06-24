@@ -29,9 +29,10 @@ RUN_VERDICT_COLORS: dict[RunVerdict, Colors] = {
 
 TESTCASE_HEADER_COLOR = Colors.DEFAULT
 WRONG_ANSWER_REASON_COLOR = Colors.GRAY
+TESTCASE_IO_EXTRA_TEXT_COLOR = Colors.GRAY
 
 IO_HEADER_COLOR = Colors.LIME
-MAX_IO_LINES = 50  # max number of io lines before cutting off the end
+MAX_IO_LINES = 30  # max number of io lines before cutting off the end
 SHORT_IO_LINES = 20  # number of io lines displayed when over the limit
 
 COMMAND_COLOR = Colors.LIGHT_GREEN
@@ -133,7 +134,6 @@ class Messages:
 
         # add spaces between string and end_string
         return string + StylizedStr(' ' * num_spaces) + end_string
-
 
     # PROBLEM EDIT
 
@@ -257,28 +257,6 @@ class Messages:
             self.log.print(compilation_error_str)
 
     # PROBLEM RUN
-
-    def run_setting_multitest_mode_needs_split(self) -> None:
-        '''
-        Print that setting testcase mode to multitests needs split.
-        '''
-        self.log.print(StylizedStr('setting testcase mode to multitests needs split'))
-
-    def run_multitest_mode_set_successfully(self) -> None:
-        '''
-        Print that multitest mode was set successfully.
-        '''
-        self.log.print(StylizedStr('set testcase mode to multitests successfully'))
-
-    def run_multitest_mode_set_unsuccessfully(self) -> None:
-        '''
-        Print that multitest mode was set unsuccessfully.
-        '''
-        self.log.print(
-            StylizedStr('set testcase mode to multitests unsuccessfully, using entire testcases instead')
-        )
-
-    # RUNNER
 
     def runner_start(self, compile_count: int, run_count: int) -> None:
         '''
@@ -455,7 +433,69 @@ class Messages:
             else:
                 assert False  # need more options
 
+    # PROBLEM SET
+
+    # PROBLEM INPUT OUTPUT
+
+    def io_remove_keep_testcases(self, testcase_names: list[str]) -> bool:
+        '''
+        Get the user's decision on deleting testcases.
+        :param testcase_names: the testcase names
+        :return: True if the user wants to delete the testcases or False otherwise
+        '''
+        return self.input_two_options([
+            f'are you sure you want to delete {self.helper_get_plural('testcase', len(testcase_names))} ',
+            ', '.join(testcase_names), '?'
+        ])
+
+    def editing_testcase(self, testcase_name: str, io_file: Literal['input', 'output'], new_testcase: bool) -> None:
+        '''
+        Print that the user is now editing a testcase.
+        :param testcase_name: the name of the testcase
+        :param io_file: one of 'input' or 'output'
+        :param new_testcase: True if the testcase is new or False otherwise
+        '''
+        self.log.print(
+            StylizedStr('editing ') + StylizedStr(io_file, bold=True)
+            + StylizedStr(' of the ') + StylizedStr('new ' if new_testcase else '')
+            + StylizedStr(f'testcase {testcase_name}', bold=True)
+        )
+
+    def view_testcases(self, testcase_names: list[str],
+                          testcase_ids: list[str], io_pairs: list[tuple[str, str]]) -> None:
+        '''
+        Print the testcases.
+        :param testcase_names: the names of the testcases
+        :param testcase_ids: the ids of the testcases
+        :param io_pairs: (io_input, io_output) pairs of the testcases
+        '''
+        self.log.print(
+            StylizedStr(f'viewing {self.helper_get_plural('testcase', len(testcase_names))} ')
+            + StylizedStr(', '.join(testcase_names), bold=True)
+        )
+        for testcase_id, (io_input, io_output) in zip(testcase_ids, io_pairs):
+            # header
+            testcase_str = StylizedStr(f'testcase {testcase_id}\n', bold=True)
+            # input and output
+            testcase_str += self.helper_io_one_testcase(io_input, None, io_output)
+            self.log.print(testcase_str)
+
     # MULTITESTS
+
+    def multitests_edit_option(self, testcase_id: int, io_file: Literal['input', 'output'],
+                               split_correctly: bool) -> bool:
+        '''
+        Get the user's decision on editing multitests.
+        :param testcase_id: testcase's id
+        :param io_file: input or output
+        :param split_correctly: True if the io file is already multitests split correctly or False otherwise
+        :return: True if the user wants to edit multitests or False otherwise
+        '''
+        return self.input_two_options([
+            f'testcase {testcase_id} {io_file} ',
+            'is' if split_correctly else 'isn\'t',
+            ' split, would you like to split it?'
+        ])
 
     def multitests_split_result(self, testcase_id: int, io_file: str, split_result: bool) -> None:
         '''
@@ -468,23 +508,56 @@ class Messages:
         split_str += StylizedStr(('' if split_result else 'un') + 'successfully', Colors.DEFAULT, True)
         self.log.print(split_str)
 
+    def setting_multitest_mode_needs_split(self) -> None:
+        '''
+        Print that setting testcase mode to multitests needs split.
+        '''
+        self.log.print(StylizedStr('setting testcase mode to multitests needs split'))
+
+    def multitest_mode_set_successfully(self) -> None:
+        '''
+        Print that multitest mode was set successfully.
+        '''
+        self.log.print(StylizedStr('set testcase mode to multitests successfully'))
+
+    def multitest_mode_set_unsuccessfully(self) -> None:
+        '''
+        Print that multitest mode was set unsuccessfully.
+        '''
+        self.log.print(
+            StylizedStr('set testcase mode to multitests unsuccessfully, using entire testcases instead')
+        )
+
+    def multitest_mode_can_no_longer_be_used(self) -> None:
+        '''
+        Print that editing multitests wasn't successful so multitest mode will be set to entire testcases.
+        '''
+        self.log.print(
+            StylizedStr('edited multitests unsuccessfully, using the entire testcases mode instead')
+        )
+
     # IO
 
-    def helper_io_format(self, io: str, end_with_newline: bool) -> str:
+    def helper_io_format(self, io: str, end_with_newline: bool) -> StylizedStr:
         '''
-        Format the io string for printing by removing redundant newlines and omitting lines if there are too many.
+        Format the io string for printing by removing redundant newlines, omitting lines if there are too many,
+        and adding empty if the io is empty.
         :param io: the io string
         :param end_with_newline: True if the formatted io should finish with a newline or False otherwise
         :return: the formatted io string
         '''
         io = io.rstrip('\n')
         io_lines = io.split('\n')
-        if len(io_lines) > MAX_IO_LINES:
-            formatted_io = '\n'.join(io_lines[:SHORT_IO_LINES])
-            formatted_io += f'\n[omitted {len(io_lines) - SHORT_IO_LINES}/{len(io_lines)} lines]'
-        else:
-            formatted_io = io
-        return formatted_io + ('\n' if end_with_newline else '')
+        if len(io_lines) > MAX_IO_LINES:  # too many lines
+            formatted_io = StylizedStr('\n'.join(io_lines[:SHORT_IO_LINES]))
+            formatted_io += StylizedStr(
+                f'\n[omitted {len(io_lines) - SHORT_IO_LINES}/{len(io_lines)} lines]', TESTCASE_IO_EXTRA_TEXT_COLOR
+            )
+        elif len(io) > 0:  # no extra text
+            formatted_io = StylizedStr(io)
+        else:  # empty testcase
+            formatted_io = StylizedStr('[empty]', TESTCASE_IO_EXTRA_TEXT_COLOR)
+        return formatted_io + StylizedStr('\n' if end_with_newline else '')
 
     def helper_io_one_testcase(self, io_input: str, user_output: Optional[str],
                                expected_output: Optional[str]) -> StylizedStr:
@@ -504,23 +577,8 @@ class Messages:
         ]
         for io_id, (io_name, io_str) in enumerate(io_pairs_print):
             testcase_str += StylizedStr(io_name + '\n', IO_HEADER_COLOR)
-            testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != len(io_pairs_print) - 1))
+            testcase_str += self.helper_io_format(io_str, io_id != len(io_pairs_print) - 1)
         return testcase_str
-
-    def multitests_edit_option(self, testcase_id: int, io_file: Literal['input', 'output'],
-                               split_correctly: bool) -> bool:
-        '''
-        Get the user's decision on editing multitests.
-        :param testcase_id: testcase's id
-        :param io_file: input or output
-        :param split_correctly: True if the io file is already multitests split correctly or False otherwise
-        :return: True if the user wants to edit multitests or False otherwise
-        '''
-        return self.input_two_options([
-            f'testcase {testcase_id} {io_file} ',
-            'is' if split_correctly else 'isn\'t',
-            ' split, would you like to split it?'
-        ])
 
     # ARGUMENTS
 

@@ -37,13 +37,12 @@ class CommandsProblem(IntEnum):
     CUSTOM_INVOCATION = 2  # c, custom-invocation [-f file]
     RUN = 3  # r, run [-t tl] [-m multitest-mode] [-c checker] [-n]
     SET = 4  # s, set [-t tl] [-m multitest-mode] [-c checker]
-    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [--view tc?]
+    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [-e tc] [--view tc?]
     RANDOM = 6  # n, random num [-t tl] [-c checker] [-s total-timeout]
     PASTE = 7  # p, paste
     MOVE = 8  # m, move problem
     HELP = 9  # h, help command[?]
     QUIT = 10  # q, quit
-    # TODO: the debug command
 
 
 class CommandSuiteProblem(CommandSuite[CommandsProblem]):
@@ -52,11 +51,12 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
     message: Messages  # the message object that handles printing
     command_names: dict[str, Command[CommandsProblem]]  # the dict of command names to commands
 
-    def __init__(self, message: Messages, problem_ids: list[str], num_testcases: int) -> None:
+    def __init__(self, message: Messages, problem_ids: list[str], num_scraped: int, num_testcases: int) -> None:
         '''
         Init Command SuiteProblem.
         :param message: the message object that handles printing
         :param problem_ids: the list of problem ids
+        :param num_scraped: the number of scraped testcases
         :param num_testcases: the number of testcases
         '''
         # set message and make problem_ids lowercase
@@ -201,33 +201,40 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
 
         # input output command
-        # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [--view tc?]
+        # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [-e tc] [--view tc?]
         arg_input_output_remove = OptionalArgument(
             '-r', '--remove', 'remove',
             1, OptionalArgumentMode.INT_RANGE, self.message,
             'the number of testcases to remove from the end',
             None,
-            num_range=(1, num_testcases)
+            num_range=(1, num_testcases - num_scraped)
         )
         arg_input_output_keep = OptionalArgument(
             '-k', '--keep', 'keep',
             1, OptionalArgumentMode.INT_RANGE, self.message,
             'the number of testcases to keep from the start',
             None,
-            num_range=(0, num_testcases - 1)
+            num_range=(num_scraped, num_testcases - 1)
         )
         arg_input_output_multitests = OptionalArgument(
             '-m', '--multitests', 'multitests',
             '?', OptionalArgumentMode.INT_RANGE, self.message,
             'the testcase whose multitests to edit or all if not specified',
             None,
-            num_range=(1, num_testcases)
+            num_range=(1, num_scraped)
         )
         arg_input_output_add = OptionalArgument(
             '-a', '--add', 'add',
             0, OptionalArgumentMode.BOOL_FLAG, self.message,
             'add a custom testcase',
             ['False']
+        )
+        arg_input_output_edit = OptionalArgument(
+            '-e', '--edit', 'edit',
+            1, OptionalArgumentMode.INT_RANGE, self.message,
+            'the testcase to edit',
+            None,
+            num_range=(num_scraped + 1, num_testcases),
         )
         arg_input_output_view = OptionalArgument(
             '-v', '--view', 'view',
@@ -240,7 +247,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             'io', 'input-output', CommandsProblem.INPUT_OUTPUT,
             [], [
                 arg_input_output_remove, arg_input_output_keep, arg_input_output_multitests,
-                arg_input_output_add, arg_input_output_view
+                arg_input_output_add, arg_input_output_edit, arg_input_output_view
             ], True,
             self.message,
             [
@@ -250,8 +257,11 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
                 'testcases and remove the rest. If', arg_input_output_multitests.short_flag,
                 'is given, edit the multitests of', arg_input_output_multitests.get_name_short(),
                 'if specified, or all scraped testcases otherwise. If', arg_input_output_add.short_flag,
-                'is set, add a custom testcase. If', arg_input_output_view.short_flag, 'is given, view the testcase',
-                arg_input_output_view.get_name_short(), 'if specified, or all testcases otherwise.'
+                'is set, add a custom testcase. If', arg_input_output_edit.short_flag, 'is given, edit the testcase',
+                arg_input_output_edit.get_name_short(), '. If', arg_input_output_view.short_flag,
+                'is given, view the testcase', arg_input_output_view.get_name_short(),
+                'if specified, or all testcases otherwise. Note that scraped testcases can\'t be removed or edited, '
+                'but can have their multitests edited.'
             ]
         )
 

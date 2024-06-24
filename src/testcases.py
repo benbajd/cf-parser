@@ -1,7 +1,7 @@
 '''Implements the TestCase class.'''
 
 from enum import IntEnum
-from typing import Optional, Literal
+from typing import Optional, Literal, TypeVar, Iterator
 from paths import File
 from dataclasses import dataclass
 from messages import Messages
@@ -49,7 +49,7 @@ MULTITEST_HEADER = '''\
 
 
 class TestCase:
-    '''An immutable testcase.'''
+    '''A mutable testcase.'''
     testcase_id: int  # the testcase's id
     testcase_type: TestCaseType  # the testcase's type
     entire_testcase: IOPair  # the entire testcase
@@ -186,7 +186,7 @@ class TestCase:
         type_char = {
             TestCaseType.SCRAPED: 's',
             TestCaseType.USER_ADDED: 'u',
-            TestCaseType.RANDOM: 'r',
+            TestCaseType.RANDOM: 'n',
         }
         return f'{self.testcase_id}{type_char[self.testcase_type]}'
 
@@ -250,10 +250,13 @@ class TestCase:
             for io_output in multitest_output.split('\n\n')
         ]
 
+        # assert the lengths of multitest inputs and outputs
+        assert len(multitest_inputs) == num_multitests and len(multitest_outputs) == num_multitests
+
         # returns io pairs as strings
         return list(zip(multitest_inputs, multitest_outputs))
 
-    def split_multitests(self, only_necessary: bool, shortcircuit: bool) -> bool:
+    def edit_multitests(self, only_necessary: bool, shortcircuit: bool) -> bool:
         '''
         Attempt to split the io files into multitests.
         If only_necessary is True, only the io files that aren't correctly split will be split,
@@ -294,7 +297,7 @@ class TestCase:
         # check if both split correctly
         return all(self.check_multitests())
 
-    def set_multitest_mode(self) -> bool:
+    def check_multitest_mode(self) -> bool:
         '''
         Check if the multitest mode can be set.
         :return: True if the multitest mode can be set, False otherwise
@@ -340,3 +343,265 @@ class TestCase:
             assert self.multiple_testcases is not None  # assert scraped type
             self.multiple_testcases.io_input.delete_file()
             self.multiple_testcases.io_output.delete_file()
+
+
+class TestCaseSet:
+    '''A mutable testcase set.'''
+    all_testcases: list[TestCase]  # the testcases
+    message: Messages  # the message object that handles printing
+
+    def __init__(self, num_testcases: int, init_mode: Literal['online', 'offline'], message: Messages,
+                 entire_testcases: list[IOPair], multiple_testcases: list[Optional[IOPair]],
+                 io_pairs: Optional[list[tuple[str, str]]],
+                 io_multitest_inputs: Optional[list[list[str]]], io_multitest_outputs: Optional[list[list[str]]],
+                 testcase_types: Optional[list[TestCaseType]]) -> None:
+        '''
+        Init TestCaseSet.
+        io_multitest_inputs and io_multitest_outputs shouldn't be given when parsing offline.
+        The lengths of all lists should be num_testcases when not None.
+        :param num_testcases: the number of testcases
+        :param init_mode: the init mode, 'online' when parsing online or 'offline' when parsing offline
+        :param message: the message object that handles printing
+        :param entire_testcases: the entire testcase files
+        :param multiple_testcases: the multiple testcase files for scraped problems or None for not scraped ones
+        :param io_pairs: (io_input, io_output) pairs for each testcase, should be given when parsing online
+        :param io_multitest_inputs: the multitests inputs if split successfully or None otherwise
+        :param io_multitest_outputs: the multitests outputs if split successfully or None otherwise
+        :param testcase_types: the testcases types, should be given when parsing offline
+        '''
+        # assert the lengths match
+        T = TypeVar('T')
+
+        def check_len(list_arg: Optional[list[T]]) -> None:
+            '''
+            Assert that the length of the list is num_testcases when not None.
+            :param list_arg: the list
+            '''
+            if list_arg is not None:
+                assert len(list_arg) == num_testcases
+
+        check_len(entire_testcases)
+        check_len(multiple_testcases)
+        check_len(io_pairs)
+        check_len(io_multitest_inputs)
+        check_len(io_multitest_outputs)
+
+        # assert the right arguments are given for each mode
+        assert bool(init_mode == 'online') == bool(io_pairs is not None)
+        if init_mode == 'offline':
+            assert io_multitest_inputs is None and io_multitest_outputs is None
+        assert bool(init_mode == 'offline') == bool(testcase_types is not None)
+
+        # set message and all_testcases
+        self.message = message
+        self.all_testcases: list[TestCase] = []
+
+        # parsing online
+        if init_mode == 'online':
+            assert io_pairs is not None  # given when parsing online
+            for io_id in range(num_testcases):
+                # get testcase data
+                entire_testcase = entire_testcases[io_id]
+                multiple_testcase = multiple_testcases[io_id]
+                io_pair = io_pairs[io_id]
+                io_multitest_input: Optional[list[str]] = None
+                if io_multitest_inputs is not None:
+                    io_multitest_input = io_multitest_inputs[io_id]
+                io_multitest_output: Optional[list[str]] = None
+                if io_multitest_outputs is not None:
+                    io_multitest_output = io_multitest_outputs[io_id]
+
+                # create the testcase
+                self.all_testcases.append(
+                    TestCase(
+                        io_id + 1, TestCaseType.SCRAPED,
+                        entire_testcase, multiple_testcase,
+                        self.message, 'online',
+                        io_pair, io_multitest_input, io_multitest_output
+                    )
+                )
+
+        # parsing offline
+        if init_mode == 'offline':
+            assert testcase_types is not None  # given when parsing offline
+            for io_id in range(num_testcases):
+                # get testcase data
+                entire_testcase = entire_testcases[io_id]
+                multiple_testcase = multiple_testcases[io_id]
+                testcase_type = testcase_types[io_id]
+
+                # create the testcase
+                self.all_testcases.append(
+                    TestCase(
+                        io_id + 1, testcase_type,
+                        entire_testcase, multiple_testcase,
+                        self.message, 'offline',
+                        None, None, None  # testcases are in the files
+                    )
+                )
+
+    def __iter__(self) -> Iterator[TestCase]:
+        '''
+        Iterate over all testcases.
+        :return: an iterator of the testcases
+        '''
+        return iter(self.all_testcases.copy())
+
+    def __len__(self) -> int:
+        '''
+        Get the number of testcases.
+        :return: the number of testcases
+        '''
+        return len(self.all_testcases)
+
+    def get_scraped_testcases(self) -> list[TestCase]:
+        '''
+        Get the list of scraped testcases.
+        :return: the list of scraped testcases
+        '''
+        return [testcase for testcase in self.all_testcases if testcase.testcase_type == TestCaseType.SCRAPED]
+
+    def get_num_multitests(self) -> int:
+        '''
+        Get the number of multitests or 0 if not split correctly.
+        :return: the number of multitests
+        '''
+        if all(testcase.check_multitest_mode() for testcase in self.all_testcases):
+            return sum(len(testcase.get_testcases(TestCaseMode.MULTIPLE)) for testcase in self.all_testcases)
+        else:
+            return 0
+
+    def check_multitest_mode(self) -> bool:
+        '''
+        Check if the multitest mode can be set.
+        :return: True if the multitest mode can be set for all testcases, False otherwise
+        '''
+        return all(testcase.check_multitest_mode() for testcase in self.all_testcases)
+
+    def set_multitest_mode(self) -> bool:
+        '''
+        Attempt to set testcase mode to multitests.
+        :return: True if multitest mode can be set, False otherwise
+        '''
+        # check if multitest mode can be set
+        if all(testcase.check_multitest_mode() for testcase in self.all_testcases):
+            return True
+
+        # try split
+        self.message.setting_multitest_mode_needs_split()
+        if all(testcase.edit_multitests(True, True) for testcase in self.get_scraped_testcases()):
+            self.message.multitest_mode_set_successfully()
+            return True
+        else:
+            self.message.multitest_mode_set_unsuccessfully()
+            return False
+
+    def get_testcase_types(self) -> list[TestCaseType]:
+        '''
+        Get the types of the testcases.
+        :return: the types of the testcases
+        '''
+        return [testcase.testcase_type for testcase in self.all_testcases]
+
+    def get_num_scraped(self) -> int:
+        '''
+        Get the number of scraped testcases.
+        :return: the number of scraped testcases
+        '''
+        return sum(1 if testcase.testcase_type == TestCaseType.SCRAPED else 0 for testcase in self.all_testcases)
+
+    def delete_remove_testcases(self, remove_cnt: int) -> None:
+        '''
+        Delete the last remove_cnt testcases.
+        :param remove_cnt: the number of testcases to remove, can't include scraped testcases
+        '''
+        if self.message.io_remove_keep_testcases(
+            [testcase.get_name() for testcase in self.all_testcases[-remove_cnt:]]
+        ):
+            for io_id in range(len(self) - remove_cnt, len(self)):
+                self.all_testcases[io_id].delete()
+            self.all_testcases = self.all_testcases[:-remove_cnt]
+
+    def delete_keep_testcases(self, keep_cnt: int) -> None:
+        '''
+        Keep the first keep_cnt testcases and delete the rest.
+        :param keep_cnt: the number of testcases to keep, the deleted ones can't include scraped testcases
+        '''
+        if self.message.io_remove_keep_testcases(
+                [testcase.get_name() for testcase in self.all_testcases[keep_cnt:]]
+        ):
+            for io_id in range(keep_cnt, len(self)):
+                self.all_testcases[io_id].delete()
+            self.all_testcases = self.all_testcases[:keep_cnt]
+
+    def edit_multitests(self, testcase_id: Optional[int]) -> None:
+        '''
+        Edit multitests.
+        :param testcase_id: the testcase whose multitests to edit, should be scraped, or None if all should be edited
+        '''
+        if testcase_id is None:  # edit all
+            for testcase in self.all_testcases:
+                if testcase.testcase_type == TestCaseType.SCRAPED:
+                    testcase.edit_multitests(False, False)
+        else:  # edit one
+            self.all_testcases[testcase_id - 1].edit_multitests(False, False)
+
+    def add_user_testcase(self, entire_testcase: IOPair) -> None:
+        '''
+        Add a user created testcase.
+        :param entire_testcase: the entire testcase files
+        '''
+        # create the testcase
+        testcase_id = len(self) + 1
+        new_testcase = TestCase(
+            testcase_id, TestCaseType.USER_ADDED,
+            entire_testcase, None,
+            self.message, 'not_scraped',
+            ('', ''), None, None
+        )
+        self.all_testcases.append(new_testcase)
+
+        # edit input and output
+        both_pairs: list[tuple[Literal['input', 'output'], File]] = [
+            ('input', entire_testcase.io_input),
+            ('output', entire_testcase.io_output)
+        ]
+        for io_file, edit_file in both_pairs:
+            self.message.editing_testcase(new_testcase.get_name(), io_file, True)
+            Execution.execute(configs.text_editor_command_wait + [str(edit_file)], None)
+
+    def edit_testcase(self, testcase_id: int) -> None:
+        '''
+        Edit a testcase.
+        :param testcase_id: testcase's id, can't be scraped
+        '''
+        # get the testcase and assert it isn't scraped
+        testcase = self.all_testcases[testcase_id - 1]
+        assert testcase.testcase_type != TestCaseType.SCRAPED
+
+        # edit input and output
+        both_pairs: list[tuple[Literal['input', 'output'], File]] = [
+            ('input', testcase.entire_testcase.io_input),
+            ('output', testcase.entire_testcase.io_output)
+        ]
+        for io_file, edit_file in both_pairs:
+            self.message.editing_testcase(testcase.get_name(), io_file, False)
+            Execution.execute(configs.text_editor_command_wait + [str(edit_file)], None)
+
+    def view_testcases(self, testcase_mode: TestCaseMode, testcase_id: Optional[int]) -> None:
+        '''
+        View testcases.
+        :param testcase_mode: the testcase mode
+        :param testcase_id: the testcase id if only viewing one or None if viewing all testcases
+        '''
+        # get the testcases to view
+        view_testcases = self.all_testcases if testcase_id is None else [self.all_testcases[testcase_id - 1]]
+
+        # get the testcase names, testcase ids, and io_pairs
+        testcase_names = [testcase.get_name() for testcase in view_testcases]
+        view_testcases_run = sum((testcase.get_testcases(testcase_mode) for testcase in view_testcases), [])
+        testcase_ids = [view_testcase.id for view_testcase in view_testcases_run]
+        io_pairs = [(view_testcase.io_input, view_testcase.io_output) for view_testcase in view_testcases_run]
+
+        # print the testcases
+        self.message.view_testcases(testcase_names, testcase_ids, io_pairs)

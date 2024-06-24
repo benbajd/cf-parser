@@ -5,7 +5,7 @@ import time
 from paths import File
 from verdicts import CompileVerdict, RunVerdict
 from messages import Messages
-from testcases import TestCase, TestCaseMode, TestCaseRun
+from testcases import TestCase, TestCaseMode, TestCaseRun, TestCaseSet
 from checkers import Checker, CheckerResultType
 from threading import Thread
 import queue
@@ -49,11 +49,11 @@ class Runner:
         if compile_result.success:
             Execution.execute(['open', '-a', 'Terminal', str(file_out)], None)
 
-    def run(self, run_testcases: list[TestCase], main: File, main_out: File,
+    def run(self, testcase_set: TestCaseSet, main: File, main_out: File,
             time_limit: float, checker: Checker, testcase_mode: TestCaseMode) -> None:
         '''
         Run the solution on the testcases.
-        :param run_testcases: the testcases to run
+        :param testcase_set: the testcases to run
         :param main: the main .cpp file
         :param main_out: the main .out file
         :param time_limit: time limit in seconds, should be a positive number
@@ -65,7 +65,7 @@ class Runner:
         # initial message
         start_time = time.perf_counter()
         compile_count = 1 + int(checker.checker_file is not None)
-        run_count = sum(len(testcase.get_testcases(testcase_mode)) for testcase in run_testcases)
+        run_count = sum(len(testcase.get_testcases(testcase_mode)) for testcase in testcase_set)
         self.message.runner_start(compile_count, run_count)
 
         # prepare files to compile
@@ -123,7 +123,7 @@ class Runner:
         to_run: list[tuple[str, str]] = []  # inputs and expected outputs
         testcase_ids: list[str] = []
 
-        for testcase_number, testcase in enumerate(run_testcases):
+        for testcase in testcase_set:
             multitests: list[TestCaseRun] = testcase.get_testcases(testcase_mode)
             to_run.extend([(multitest.io_input, multitest.io_output) for multitest in multitests])
             testcase_ids.extend([multitest.id for multitest in multitests])

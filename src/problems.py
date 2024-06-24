@@ -7,7 +7,7 @@ from directories import DirsProblem
 from paths import Folder, File
 import basefiles
 from messages import Messages
-from testcases import TestCase, TestCaseMode, TestCaseType, IOPair
+from testcases import TestCase, TestCaseMode, TestCaseType, IOPair, TestCaseSet
 import checkers
 from checkers import Checker
 from runners import Runner
@@ -34,7 +34,7 @@ class Problem:
     dirs: DirsProblem  # problem's dirs handler
     message: Messages  # the message object that handles printing
     time_limit: float  # problem's time limit
-    all_testcases: list[TestCase]  # problem's testcases
+    testcase_set: TestCaseSet  # problem's testcases
     testcase_mode: TestCaseMode  # the mode of running testcases
     checker: Checker  # the checker
     runner: Runner  # the runner
@@ -72,37 +72,28 @@ class Problem:
         self.dirs.get_custom_checker().write_file(basefiles.CHECKER_CPP)
         self.dirs.get_bruteforce().write_file(basefiles.BRUTEFORCE_CPP)
         self.dirs.get_generator().write_file(basefiles.GENERATOR_CPP)
-        self.all_testcases: list[TestCase] = []
-        for io_id, io_pair in enumerate(scraped_data['io']):
-            # get the entire testcase
-            entire_testcase = IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
-            multiple_testcases = IOPair(
-                self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1)
-            )
 
-            # get multitests
-            multitests_inputs: Optional[list[str]] = None
-            if scraped_data['io_multitest_inputs'] is not None:
-                multitests_inputs = scraped_data['io_multitest_inputs'][io_id]
-            multitests_outputs: Optional[list[str]] = None
-            if scraped_data['io_multitest_outputs'] is not None:
-                multitests_outputs = scraped_data['io_multitest_outputs'][io_id]
-
-            # create the testcase
-            self.all_testcases.append(
-                TestCase(
-                    io_id + 1, TestCaseType.SCRAPED,
-                    entire_testcase, multiple_testcases,
-                    self.message, 'online',
-                    io_pair, multitests_inputs, multitests_outputs
-                )
-            )
+        # set the testcase set
+        num_testcases = len(scraped_data['io'])
+        self.testcase_set = TestCaseSet(
+            num_testcases, 'online', self.message,
+            [
+                IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
+                for io_id in range(num_testcases)
+            ],
+            [
+                IOPair(self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1))
+                for io_id in range(num_testcases)
+            ],
+            scraped_data['io'], scraped_data['io_multitest_inputs'], scraped_data['io_multitest_outputs'],
+            None
+        )
 
         # set the problem data
         self.problem_name = scraped_data['name']
         self.time_limit = scraped_data['time_limit']
         self.testcase_mode = (  # multiple if all testcases have multitests else one
-            TestCaseMode.MULTIPLE if all(testcase.set_multitest_mode() for testcase in self.all_testcases)
+            TestCaseMode.MULTIPLE if self.testcase_set.check_multitest_mode()
             else TestCaseMode.ONE
         )
         self.checker = checkers.get_checker('t')  # tokens by default
@@ -127,27 +118,25 @@ class Problem:
             self.dirs.get_custom_checker_compiled()
         )
 
-        # set the testcases
-        self.all_testcases: list[TestCase] = []
-        for io_id, testcase_type_int in enumerate(problem_data['testcase_types']):
-            # get the testcase type and io files
-            testcase_type = TestCaseType(testcase_type_int)
-            entire_testcase = IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
-
-            # multitests files exist when testcase type is scraped
-            multiple_testcases: Optional[IOPair] = None
-            if testcase_type == TestCaseType.SCRAPED:
-                multiple_testcases = IOPair(
-                    self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1)
+        # set the testcase_set
+        num_testcases = len(problem_data['testcase_types'])
+        self.testcase_set = TestCaseSet(
+            num_testcases, 'offline', self.message,
+            [
+                IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
+                for io_id in range(num_testcases)
+            ],
+            [
+                (
+                    IOPair(self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1))
+                    if TestCaseType(problem_data['testcase_types'][io_id]) == TestCaseType.SCRAPED
+                    else None
                 )
-
-            # create the testcase
-            self.all_testcases.append(TestCase(
-                io_id + 1, TestCaseType(testcase_type),
-                entire_testcase, multiple_testcases,
-                self.message, 'offline',
-                None, None, None  # testcases are in the files
-            ))
+                for io_id in range(num_testcases)
+            ],
+            None, None, None,
+            list(map(TestCaseType, problem_data['testcase_types']))
+        )
 
     def update_problem_data(self) -> None:
         '''
@@ -156,7 +145,7 @@ class Problem:
         problem_data: ProblemOffline = {
             'name': self.problem_name,
             'time_limit': self.time_limit,
-            'testcase_types': [testcase.testcase_type for testcase in self.all_testcases],
+            'testcase_types': self.testcase_set.get_testcase_types(),
             'testcase_mode': self.testcase_mode,
             'checker_type': self.checker.one_char_name,
         }
@@ -168,13 +157,19 @@ class Problem:
         :param problem_ids: the problem ids in this contest
         :return: the first parsed command and args not executable in problem
         '''
-        command_suite = CommandSuiteProblem(self.message, problem_ids, len(self.all_testcases))
-
         while True:
+            # get the command suite
+            command_suite = CommandSuiteProblem(
+                self.message,
+                problem_ids,
+                self.testcase_set.get_num_scraped(),
+                len(self.testcase_set)
+            )
+
             # print the header and get the args
             args = self.message.get_command_problem(
                 self.contest_id, self.problem_id,
-                self.time_limit, self.count_testcases(),
+                self.time_limit, (len(self.testcase_set), self.testcase_set.get_num_multitests()),
                 'o' if self.testcase_mode == TestCaseMode.ONE else 'm', self.checker.one_char_name
             )
 
@@ -215,7 +210,7 @@ class Problem:
                         else TestCaseMode.MULTIPLE
                     )
                     # if user chooses multitests, check if they can be set
-                    if run_testcase_mode == TestCaseMode.MULTIPLE and not self.set_multitest_mode():
+                    if run_testcase_mode == TestCaseMode.MULTIPLE and not self.testcase_set.set_multitest_mode():
                         run_testcase_mode = TestCaseMode.ONE
 
                 # get the checker
@@ -230,7 +225,7 @@ class Problem:
 
                 # run
                 self.runner.run(
-                    self.all_testcases,
+                    self.testcase_set,
                     self.dirs.get_main(), self.dirs.get_main_compiled(),
                     run_time_limit, run_checker, run_testcase_mode
                 )
@@ -255,13 +250,13 @@ class Problem:
                         else TestCaseMode.MULTIPLE
                     )
                     # if user chooses multitests, check if they can be set
-                    if set_testcase_mode == TestCaseMode.MULTIPLE and not self.set_multitest_mode():
+                    if set_testcase_mode == TestCaseMode.MULTIPLE and not self.testcase_set.set_multitest_mode():
                         set_testcase_mode = TestCaseMode.ONE
                     self.testcase_mode = set_testcase_mode
 
                 # get the checker
                 if json.loads(parsed_args['checker']) is not None:
-                    checker_one_char_name: Literal['t', 'y', 'c'] = json.loads(parsed_args['checker'])
+                    checker_one_char_name = json.loads(parsed_args['checker'])  # Literal['t', 'y', 'c']
                     self.checker = checkers.get_checker(
                         checker_one_char_name,
                         self.dirs.get_custom_checker(),
@@ -270,6 +265,49 @@ class Problem:
 
                 # update problem data
                 self.update_problem_data()
+
+            elif command == CommandsProblem.INPUT_OUTPUT:
+                num_testcases = len(self.testcase_set)
+                # remove
+                if json.loads(parsed_args['remove']) is not None:
+                    remove_cnt = int(json.loads(parsed_args['remove']))
+                    self.testcase_set.delete_remove_testcases(remove_cnt)
+                # keep
+                if json.loads(parsed_args['keep']) is not None:
+                    keep_cnt = int(json.loads(parsed_args['keep']))
+                    self.testcase_set.delete_keep_testcases(keep_cnt)
+                # multitests
+                if json.loads(parsed_args['multitests']) is not None:
+                    # edit multitests
+                    multitest_args = json.loads(parsed_args['multitests'])
+                    if len(multitest_args) == 0:  # edit multitests of all scraped testcases
+                        self.testcase_set.edit_multitests(None)
+                    else:
+                        testcase_id = int(multitest_args[0])
+                        self.testcase_set.edit_multitests(testcase_id)
+                    # check the testcase mode
+                    if self.testcase_mode == TestCaseMode.MULTIPLE and not self.testcase_set.check_multitest_mode():
+                        self.testcase_mode = TestCaseMode.ONE
+                        self.message.multitest_mode_can_no_longer_be_used()
+                # add
+                if json.loads(parsed_args['add'])[0] == 'True':
+                    testcase_id = len(self.testcase_set) + 1
+                    self.testcase_set.add_user_testcase(
+                        IOPair(self.dirs.get_input(testcase_id), self.dirs.get_output(testcase_id))
+                    )
+                # edit
+                if json.loads(parsed_args['edit']) is not None:
+                    testcase_id = int(json.loads(parsed_args['edit']))
+                    self.testcase_set.edit_testcase(testcase_id)
+                # view
+                if json.loads(parsed_args['view']) is not None:
+                    view_args = json.loads(parsed_args['view'])
+                    view_testcase_id: Optional[int] = None if len(view_args) == 0 else int(view_args[0])
+                    self.testcase_set.view_testcases(self.testcase_mode, view_testcase_id)
+
+                # update problem data
+                self.update_problem_data()
+                continue
 
     def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
         '''
@@ -292,45 +330,3 @@ class Problem:
         '''
         file_edit = self.get_cpp_file_pair(file_cpp)[0]
         Execution.execute(configs.code_editor_command + [str(file_edit)], None)
-
-    def set_multitest_mode(self) -> bool:
-        '''
-        Attempt to set testcase mode to multitests.
-        :return: True if multitest mode can be set, False otherwise
-        '''
-        # check if multitest mode can be set
-        if all(testcase.set_multitest_mode() for testcase in self.all_testcases):
-            return True
-
-        # try split
-        self.message.run_setting_multitest_mode_needs_split()
-        if all(testcase.split_multitests(True, True) for testcase in self.all_testcases):
-            self.message.run_multitest_mode_set_successfully()
-            return True
-        else:
-            self.message.run_multitest_mode_set_unsuccessfully()
-            return False
-
-    def run(self) -> None:
-        '''
-        Run the problem.
-        '''
-        self.runner.run(
-            self.all_testcases,
-            self.dirs.get_main(),
-            self.dirs.get_main_compiled(),
-            self.time_limit,
-            self.checker,
-            self.testcase_mode
-        )
-
-    def count_testcases(self) -> tuple[int, int]:
-        '''
-        Count the number of testcases in both testcase modes.
-        :return: the number of testcases and the number of multitests or 0 if not split correctly
-        '''
-        num_testcases = len(self.all_testcases)
-        num_multitests = 0
-        if all(testcase.set_multitest_mode() for testcase in self.all_testcases):
-            num_multitests = sum(len(testcase.get_testcases(TestCaseMode.MULTIPLE)) for testcase in self.all_testcases)
-        return num_testcases, num_multitests

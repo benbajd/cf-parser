@@ -289,7 +289,8 @@ class OptionalArgument(Argument):
         Parse the arguments.
         :param args: the given arguments, len(args) <= num_args (1 for '?', infinity for '+' and '*'), None if not given
         :return: the json encoded arguments if successfully parsed
-                 (a list when num_args != 1 and the element when num_args == 1) or None otherwise
+                 (a list when num_args != 1 and the element when num_args == 1
+                 or None when a flag without default isn't passed) or None otherwise
         '''
         # set default args if flag not given
         flag_given = bool(args is not None)
@@ -298,10 +299,7 @@ class OptionalArgument(Argument):
                 args = self.default
             else:
                 # return None
-                if self.num_args == 1:
-                    return json.dumps(None)
-                else:
-                    return json.dumps([None])
+                return json.dumps(None)
 
         # check that enough arguments were given
         if isinstance(self.num_args, int) and len(args) < self.num_args:

@@ -95,6 +95,7 @@ def read_online(url: str, message: Messages) -> str:
     while response.status_code != 200:
         response = requests.get(url)
     return response.text
+    # TODO: return after some amount of failed attempts
 
 
 def io_prettify(io: str) -> str:
