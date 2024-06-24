@@ -275,7 +275,7 @@ class Messages:
         Print that multitest mode was set unsuccessfully.
         '''
         self.log.print(
-            StylizedStr('set testcase mode to multitests unsuccessfully, using entire testcase mode instead')
+            StylizedStr('set testcase mode to multitests unsuccessfully, using entire testcases instead')
         )
 
     # RUNNER
@@ -506,6 +506,21 @@ class Messages:
             testcase_str += StylizedStr(io_name + '\n', IO_HEADER_COLOR)
             testcase_str += StylizedStr(self.helper_io_format(io_str, io_id != len(io_pairs_print) - 1))
         return testcase_str
+
+    def multitests_edit_option(self, testcase_id: int, io_file: Literal['input', 'output'],
+                               split_correctly: bool) -> bool:
+        '''
+        Get the user's decision on editing multitests.
+        :param testcase_id: testcase's id
+        :param io_file: input or output
+        :param split_correctly: True if the io file is already multitests split correctly or False otherwise
+        :return: True if the user wants to edit multitests or False otherwise
+        '''
+        return self.input_two_options([
+            f'testcase {testcase_id} {io_file} ',
+            'is' if split_correctly else 'isn\'t',
+            ' split, would you like to split it?'
+        ])
 
     # ARGUMENTS
 

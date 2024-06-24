@@ -66,24 +66,19 @@ class Problem:
         :param scraped_data: the online data
         '''
         # creating the problem files for the first time
+        # TODO: move creating files into classes
         self.folder.create_folder()
         self.dirs.get_main().write_file(basefiles.MAIN_CPP)
         self.dirs.get_custom_checker().write_file(basefiles.CHECKER_CPP)
         self.dirs.get_bruteforce().write_file(basefiles.BRUTEFORCE_CPP)
         self.dirs.get_generator().write_file(basefiles.GENERATOR_CPP)
         self.all_testcases: list[TestCase] = []
-        for io_id, (io_input, io_output) in enumerate(scraped_data['io']):
+        for io_id, io_pair in enumerate(scraped_data['io']):
             # get the entire testcase
-            input_file = self.dirs.get_input(io_id + 1)
-            output_file = self.dirs.get_output(io_id + 1)
-            input_file.write_file(io_input)
-            output_file.write_file(io_output)
-
-            # create empty multitest files
-            multitest_input_file = self.dirs.get_input_multitest(io_id + 1)
-            multitest_output_file = self.dirs.get_output_multitest(io_id + 1)
-            multitest_input_file.write_file('')
-            multitest_output_file.write_file('')
+            entire_testcase = IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
+            multiple_testcases = IOPair(
+                self.dirs.get_input_multitest(io_id + 1), self.dirs.get_output_multitest(io_id + 1)
+            )
 
             # get multitests
             multitests_inputs: Optional[list[str]] = None
@@ -96,13 +91,10 @@ class Problem:
             # create the testcase
             self.all_testcases.append(
                 TestCase(
-                    io_id + 1,
-                    TestCaseType.SCRAPED,
-                    IOPair(input_file, output_file),
-                    IOPair(multitest_input_file, multitest_output_file),
-                    self.message,
-                    multitests_inputs,
-                    multitests_outputs
+                    io_id + 1, TestCaseType.SCRAPED,
+                    entire_testcase, multiple_testcases,
+                    self.message, 'online',
+                    io_pair, multitests_inputs, multitests_outputs
                 )
             )
 
@@ -151,12 +143,10 @@ class Problem:
 
             # create the testcase
             self.all_testcases.append(TestCase(
-                io_id + 1,
-                TestCaseType(testcase_type),
-                entire_testcase,
-                multiple_testcases,
-                self.message,
-                None, None  # multitests are in the files
+                io_id + 1, TestCaseType(testcase_type),
+                entire_testcase, multiple_testcases,
+                self.message, 'offline',
+                None, None, None  # testcases are in the files
             ))
 
     def update_problem_data(self) -> None:

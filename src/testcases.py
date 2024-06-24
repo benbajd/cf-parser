@@ -1,7 +1,7 @@
 '''Implements the TestCase class.'''
 
 from enum import IntEnum
-from typing import Optional
+from typing import Optional, Literal
 from paths import File
 from dataclasses import dataclass
 from messages import Messages
@@ -58,10 +58,11 @@ class TestCase:
 
     def __init__(self, testcase_id: int, testcase_type: TestCaseType,
                  entire_testcase: IOPair, multiple_testcases: Optional[IOPair], message: Messages,
+                 init_mode: Literal['online', 'offline', 'not_scraped'], io_pair: Optional[tuple[str, str]] = None,
                  multitests_inputs: Optional[list[str]] = None, multitests_outputs: Optional[list[str]] = None) -> None:
         '''
         Init TestCase.
-        Both multitests_inputs and multitests_outputs should be None when parsing offline.
+        All of io, multitests_inputs and multitests_outputs should be None when parsing offline.
         multitests_inputs should have length one longer than multitests_outputs when both given
         to also contain num_testcases as the first element.
         Neither of multitests_inputs and multitests_outputs should contain newlines at the end of each multitest.
@@ -70,64 +71,152 @@ class TestCase:
         :param entire_testcase: the entire testcase
         :param multiple_testcases: the multitest files if testcase type is scraped, or None otherwise
         :param message: the message object that handles printing
+        :param init_mode: the init mode, 'online' or 'offline' when parsing or 'not_scraped' when not scraped
+        :param io_pair: the (io_input, io_output) pair or None when parsing offline
         :param multitests_inputs: the multitests inputs if split successfully or None otherwise
         :param multitests_outputs: the multitests outputs if split successfully or None otherwise
         '''
         self.testcase_id = testcase_id
         self.testcase_type = testcase_type
-        self.testcase = entire_testcase
-        self.multiple_testcases = multiple_testcases if multiple_testcases is not None else None
+        self.entire_testcase = entire_testcase
+        self.multiple_testcases = multiple_testcases
         self.message = message
 
+        # asserts
+        # check that the type isn't scraped when init_mode is 'not_scraped'
+        if init_mode == 'not_scraped':
+            assert testcase_type != TestCaseType.SCRAPED
+        # check that io is given when parsing online or not scraped
+        if init_mode == 'online' or init_mode == 'not_scraped':
+            assert io_pair is not None
+        # check that none of io, multitests_inputs, and multitests_outputs is given when parsing offline
+        if init_mode == 'offline':
+            assert io_pair is None and multitests_inputs is None and multitests_outputs is None
         # check that multiple_testcases are given when type is scraped
         assert bool(self.testcase_type == TestCaseType.SCRAPED) == bool(self.multiple_testcases is not None)
-
         # check that multitests_inputs and multitests_outputs are not given when type isn't scraped
         if self.testcase_type != TestCaseType.SCRAPED:
             assert multitests_inputs is None and multitests_outputs is None
 
+        # create io files
+        if init_mode == 'online' or init_mode == 'not_scraped':
+            assert io_pair is not None
+            self.create_io_files(io_pair)
+
         # rewrite the multitest files if needed
         if self.testcase_type == TestCaseType.SCRAPED:
-            # get the current multitest input and output
-            assert self.multiple_testcases is not None
-            multitest_input = self.multiple_testcases.io_input.read_file()
-            multitest_output = self.multiple_testcases.io_output.read_file()
+            self.set_multitest_files(multitests_inputs, multitests_outputs)
 
-            # input
-            if not multitest_input.startswith(MULTITEST_HEADER):
-                if multitests_inputs is not None:  # the input was split
-                    self.multiple_testcases.io_input.write_file(MULTITEST_HEADER + '\n\n'.join(multitests_inputs))
-                else:  # the input wasn't split, use io_input
-                    self.multiple_testcases.io_input.write_file(MULTITEST_HEADER + self.testcase.io_input.read_file())
+    def create_io_files(self, io: tuple[str, str]) -> None:
+        '''
+        Create testcase's io files.
+        :param io: the (io_input, io_output) pair
+        '''
+        self.entire_testcase.io_input.write_file(io[0])
+        self.entire_testcase.io_output.write_file(io[1])
+        if self.testcase_type == TestCaseType.SCRAPED:
+            assert self.multiple_testcases is not None  # assert scraped type
+            self.multiple_testcases.io_input.write_file('')
+            self.multiple_testcases.io_output.write_file('')
 
-            # output
-            if not multitest_output.startswith(MULTITEST_HEADER):
-                if multitests_outputs is not None:  # the output was split
-                    self.multiple_testcases.io_output.write_file(MULTITEST_HEADER + '\n\n'.join(multitests_outputs))
-                else:  # the output wasn't split, use io_output
-                    self.multiple_testcases.io_output.write_file(MULTITEST_HEADER + self.testcase.io_output.read_file())
+    def check_multitest_files(self) -> tuple[bool, bool]:
+        '''
+        Check if each multitest file starts with the header and contains the right tokens.
+        Can only be called if type is scraped.
+        :return: for both input and output,
+                 True if it starts with the header and contains the right tokens or False otherwise
+        '''
+        # get the current multitest input and output
+        assert self.multiple_testcases is not None  # assert scraped type
+        multitest_input = self.multiple_testcases.io_input.read_file()
+        multitest_output = self.multiple_testcases.io_output.read_file()
+
+        # get the tokens from the entire testcase
+        entire_input_tokens = self.entire_testcase.io_input.read_file().split()
+        entire_output_tokens = self.entire_testcase.io_output.read_file().split()
+
+        # check the header and tokens
+        return (
+            multitest_input.startswith(MULTITEST_HEADER)
+            and multitest_input.removeprefix(MULTITEST_HEADER).split() == entire_input_tokens,
+            multitest_output.startswith(MULTITEST_HEADER)
+            and multitest_output.removeprefix(MULTITEST_HEADER).split() == entire_output_tokens
+        )
+
+    def set_multitest_files(self, multitests_inputs: Optional[list[str]] = None,
+                            multitests_outputs: Optional[list[str]] = None) -> None:
+        '''
+        Set multitest files.
+        When parsing online, multitests_inputs and multitests_outputs can be given when split successfully.
+        Can also be called to fix the multitest headers.
+        multitests_inputs should have length one longer than multitests_outputs when both given
+        to also contain num_testcases as the first element.
+        Neither of multitests_inputs and multitests_outputs should contain newlines at the end of each multitest.
+        Can only be called if type is scraped.
+        :param multitests_inputs: the multitests inputs if parsing online and split successfully or None otherwise
+        :param multitests_outputs: the multitests outputs if parsing online and split successfully or None otherwise
+        '''
+        # check multitest files
+        assert self.multiple_testcases is not None  # assert scraped type
+        check_multitest_input, check_multitest_output = self.check_multitest_files()
+
+        # input
+        if not check_multitest_input:
+            if multitests_inputs is not None:  # the input was split
+                self.multiple_testcases.io_input.write_file(MULTITEST_HEADER + '\n\n'.join(multitests_inputs))
+            else:  # the input wasn't split, use io_input
+                self.multiple_testcases.io_input.write_file(
+                    MULTITEST_HEADER + self.entire_testcase.io_input.read_file()
+                )
+
+        # output
+        if not check_multitest_output:
+            if multitests_outputs is not None:  # the output was split
+                self.multiple_testcases.io_output.write_file(MULTITEST_HEADER + '\n\n'.join(multitests_outputs))
+            else:  # the output wasn't split, use io_output
+                self.multiple_testcases.io_output.write_file(
+                    MULTITEST_HEADER + self.entire_testcase.io_output.read_file()
+                )
+
+    def get_name(self) -> str:
+        '''
+        Get the testcase's name with its id and type.
+        :return: the testcase's name
+        '''
+        type_char = {
+            TestCaseType.SCRAPED: 's',
+            TestCaseType.USER_ADDED: 'u',
+            TestCaseType.RANDOM: 'r',
+        }
+        return f'{self.testcase_id}{type_char[self.testcase_type]}'
 
     def check_multitests(self) -> tuple[bool, bool]:
         '''
         Check if the multitest files are split correctly. Can only be called if type is scraped.
         :return: for both input and output, True if split correctly or False otherwise
         '''
-        # assert scraped type and read multitest files without the header
-        assert self.multiple_testcases is not None
+        # read multitest files without the header and check them
+        assert self.multiple_testcases is not None  # assert scraped type
         multitest_input = self.multiple_testcases.io_input.read_file().removeprefix(MULTITEST_HEADER)
         multitest_output = self.multiple_testcases.io_output.read_file().removeprefix(MULTITEST_HEADER)
-        # TODO: handle changed header
+        check_multitest_input, check_multitest_output = self.check_multitest_files()
+
+        # if input check is False, neither can be split correctly
+        if not check_multitest_input:
+            return False, False
 
         # find the number of multitests
-        first_input_line = multitest_input.splitlines()[0]
-        if not first_input_line.isdigit():  # not a multitest problem since the first line isn't t
+        multitest_input_line = multitest_input.splitlines()
+        first_input_line = multitest_input_line[0] if len(multitest_input_line) >= 1 else ''
+        if first_input_line == '' or not first_input_line.isdigit():
+            # not a multitest problem since the first line isn't t
             return False, False
         num_multitests = int(first_input_line)
 
         # check the double newline counts
         return (
             bool(multitest_input.count('\n\n') == num_multitests),  # split at t
-            bool(multitest_output.count('\n\n') == num_multitests - 1)  # no t in the output
+            check_multitest_output and bool(multitest_output.count('\n\n') == num_multitests - 1)  # no t in the output
         )
 
     def get_multitests(self) -> list[tuple[str, str]]:
@@ -166,7 +255,7 @@ class TestCase:
 
     def split_multitests(self, only_necessary: bool, shortcircuit: bool) -> bool:
         '''
-        Attempts to split the io files into multitests.
+        Attempt to split the io files into multitests.
         If only_necessary is True, only the io files that aren't correctly split will be split,
         otherwise both input and output will be split.
         Can only be called if the testcase type is scraped.
@@ -176,24 +265,18 @@ class TestCase:
         '''
         assert self.multiple_testcases is not None  # assert scraped type
 
-        # check whether split correctly initially
-        input_check, output_check = self.check_multitests()
+        # set multitest files
+        self.set_multitest_files()
 
         # attempt split on both input and output
-        both_io_tuples = [
-            ('input', input_check, self.multiple_testcases.io_input, 0),
-            ('output', output_check, self.multiple_testcases.io_output, 1)
+        both_io_tuples: list[tuple[Literal['input', 'output'], File, int]] = [
+            ('input', self.multiple_testcases.io_input, 0),
+            ('output', self.multiple_testcases.io_output, 1)
         ]
-        for io_file, io_file_check, multitest_file, check_id in both_io_tuples:
+        for io_file, multitest_file, check_id in both_io_tuples:
+            io_file_check = self.check_multitests()[check_id]  # check if split correctly
             if not io_file_check or not only_necessary:  # only attempt split if necessary
-                decision_str = [
-                    f'testcase {self.testcase_id} {io_file} ',
-                    'is' if io_file_check else 'isn\'t',
-                    ' split, would you like to split it?'
-                ]
-                # TODO: rewrite file if header was changed
-                # TODO: move decision_str to messages
-                if self.message.input_two_options(decision_str):  # user wants to split
+                if self.message.multitests_edit_option(self.testcase_id, io_file, io_file_check):  # user wants to split
                     # wait on the user to edit the multitests in the text editor
                     Execution.execute(
                         configs.text_editor_command_wait + [str(multitest_file)],
@@ -235,8 +318,8 @@ class TestCase:
             # get the entire testcase
             entire_testcase = TestCaseRun(
                 str(self.testcase_id),
-                self.testcase.io_input.read_file(),
-                self.testcase.io_output.read_file()
+                self.entire_testcase.io_input.read_file(),
+                self.entire_testcase.io_output.read_file()
             )
             return [entire_testcase]
         else:
@@ -245,3 +328,15 @@ class TestCase:
                 TestCaseRun(f'{self.testcase_id}-{idx + 1}', io_input, io_output)
                 for idx, (io_input, io_output) in enumerate(self.get_multitests())
             ]
+
+    def delete(self) -> None:
+        '''
+        Delete the testcase.
+        '''
+        # delete all io files
+        self.entire_testcase.io_input.delete_file()
+        self.entire_testcase.io_output.delete_file()
+        if self.testcase_type == TestCaseType.SCRAPED:
+            assert self.multiple_testcases is not None  # assert scraped type
+            self.multiple_testcases.io_input.delete_file()
+            self.multiple_testcases.io_output.delete_file()
