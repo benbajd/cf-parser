@@ -273,11 +273,11 @@ class Problem:
                     remove_cnt = int(json.loads(parsed_args['remove']))
                     self.testcase_set.delete_remove_testcases(remove_cnt)
                 # keep
-                if json.loads(parsed_args['keep']) is not None:
+                elif json.loads(parsed_args['keep']) is not None:
                     keep_cnt = int(json.loads(parsed_args['keep']))
                     self.testcase_set.delete_keep_testcases(keep_cnt)
                 # multitests
-                if json.loads(parsed_args['multitests']) is not None:
+                elif json.loads(parsed_args['multitests']) is not None:
                     # edit multitests
                     multitest_args = json.loads(parsed_args['multitests'])
                     if len(multitest_args) == 0:  # edit multitests of all scraped testcases
@@ -290,24 +290,75 @@ class Problem:
                         self.testcase_mode = TestCaseMode.ONE
                         self.message.multitest_mode_can_no_longer_be_used()
                 # add
-                if json.loads(parsed_args['add'])[0] == 'True':
+                elif json.loads(parsed_args['add'])[0] == 'True':
                     testcase_id = len(self.testcase_set) + 1
                     self.testcase_set.add_user_testcase(
                         IOPair(self.dirs.get_input(testcase_id), self.dirs.get_output(testcase_id))
                     )
                 # edit
-                if json.loads(parsed_args['edit']) is not None:
+                elif json.loads(parsed_args['edit']) is not None:
                     testcase_id = int(json.loads(parsed_args['edit']))
                     self.testcase_set.edit_testcase(testcase_id)
                 # view
-                if json.loads(parsed_args['view']) is not None:
+                elif json.loads(parsed_args['view']) is not None:
                     view_args = json.loads(parsed_args['view'])
                     view_testcase_id: Optional[int] = None if len(view_args) == 0 else int(view_args[0])
                     self.testcase_set.view_testcases(self.testcase_mode, view_testcase_id)
+                # no flags
+                else:
+                    self.message.input_output_no_flags_given()
 
                 # update problem data
                 self.update_problem_data()
                 continue
+
+            elif command == CommandsProblem.RANDOM:
+                # get the number of random testcases
+                random_num_testcases = int(json.loads(parsed_args['num']))
+
+                # get the time limit
+                random_time_limit = self.time_limit
+                if json.loads(parsed_args['time-limit']) is not None:
+                    random_time_limit = float(json.loads(parsed_args['time-limit']))
+
+                # get the checker
+                random_checker = self.checker
+                if json.loads(parsed_args['checker']) is not None:
+                    checker_one_char_name = json.loads(parsed_args['checker'])  # Literal['t', 'y', 'c']
+                    random_checker = checkers.get_checker(
+                        checker_one_char_name,
+                        self.dirs.get_custom_checker(),
+                        self.dirs.get_custom_checker_compiled()
+                    )
+
+                # get the total timeout
+                random_total_timeout: Optional[float] = None
+                if json.loads(parsed_args['total-timeout']) is not None:
+                    random_total_timeout = float(json.loads(parsed_args['total-timeout']))
+
+                # random
+                self.message.hi()
+                # TODO: implement random
+                # TODO: update problem data if a testcase is added
+
+            elif command == CommandsProblem.PASTE:
+                Execution.execute(['pbcopy'], self.dirs.get_main().read_file())
+                self.message.paste_problem(self.problem_id)
+
+            elif command == CommandsProblem.MOVE:
+                return command, parsed_args  # process by the contest
+
+            elif command == CommandsProblem.HELP:
+                help_args = json.loads(parsed_args['command'])
+                command_name: Optional[str] = None if len(help_args) == 0 else help_args[0]
+                command_suite.print_help_strings(command_name)
+
+            elif command == CommandsProblem.QUIT:
+                return command, parsed_args  # process by the contest
+
+            else:
+                assert False  # needs more commands
+
 
     def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
         '''

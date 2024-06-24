@@ -88,7 +88,7 @@ class Contest:
             command, parsed_args = self.problems[current_problem].process_commands(list(self.problems.keys()))
             if command == CommandsProblem.EDIT:
                 # get the list of problem ids to edit
-                problems_edit: list[str] = [problem_id.upper() for problem_id in json.loads(parsed_args['problem_ids'])]
+                problems_edit: list[str] = [problem_id.upper() for problem_id in json.loads(parsed_args['problem-ids'])]
                 if current_problem not in problems_edit:
                     problems_edit.append(current_problem)
                 problems_edit.sort()
@@ -108,3 +108,16 @@ class Contest:
 
                 # focus on the current problem
                 self.problems[current_problem].edit(file_cpp)
+            elif command == CommandsProblem.MOVE:
+                # get the problem id and print the move
+                problem_id = json.loads(parsed_args['problem-id']).upper()
+                self.message.move_problem(problem_id)
+
+                # change the current problem
+                current_problem = problem_id
+            elif command == CommandsProblem.QUIT:
+                # print the message and quit
+                self.message.quit_contest(self.contest_id)
+                break
+            else:
+                assert False  # needs more commands

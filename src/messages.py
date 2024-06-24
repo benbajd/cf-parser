@@ -480,6 +480,50 @@ class Messages:
             testcase_str += self.helper_io_one_testcase(io_input, None, io_output)
             self.log.print(testcase_str)
 
+    def input_output_no_flags_given(self) -> None:
+        '''
+        Print that no flags were given to the input output command.
+        '''
+        self.log.print(StylizedStr('the testcase command, add a flag to use'))
+
+    # PROBLEM RANDOM
+
+    # PROBLEM PASTE
+
+    def paste_problem(self, problem_id: str) -> None:
+        '''
+        Print that the problem was copied to clipboard.
+        :param problem_id: problem's id
+        '''
+        self.log.print(
+            StylizedStr('copied problem ') + StylizedStr(problem_id, HEADER_PROBLEM_COLOR)
+            + StylizedStr(' to clipboard')
+        )
+
+    # PROBLEM MOVE
+
+    def move_problem(self, problem_id: str) -> None:
+        '''
+        Print that the user moved to a problem.
+        :param problem_id: the id of the problem the user moved to
+        '''
+        self.log.print(
+            StylizedStr('moving to problem ') + StylizedStr(problem_id, HEADER_PROBLEM_COLOR)
+        )
+
+    # PROBLEM HELP
+
+    # PROBLEM QUIT
+
+    def quit_contest(self, contest_id: str) -> None:
+        '''
+        Print that the user is quitting a contest.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr('quitting contest ') + StylizedStr(contest_id, HEADER_CONTEST_COLOR)
+        )
+
     # MULTITESTS
 
     def multitests_edit_option(self, testcase_id: int, io_file: Literal['input', 'output'],

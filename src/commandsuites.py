@@ -66,7 +66,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         # edit command
         # e, edit problems[*] [--all] [-f file]
         arg_edit_problems = PositionalArgument(
-            'problem-ids', 'problem_ids',
+            'problem-ids', 'problem-ids',
             '*', PositionalArgumentMode.CHOICES, self.message,
             f'problem ids, any of {problem_ids}',
             choices=problem_ids
@@ -110,7 +110,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             [], [arg_custom_invocation_file], False,
             self.message,
             [
-                'Run .cpp file in a new shell. When', arg_custom_invocation_file.short_flag,
+                'Run a .cpp file in a new shell. When', arg_custom_invocation_file.short_flag,
                 'is not given, run main, otherwise run', arg_custom_invocation_file.get_name_short(), '.'
             ]
         )
@@ -326,7 +326,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         # move command
         # m, move problem
         arg_move_problem = PositionalArgument(
-            'problem-id', 'problem_id',
+            'problem-id', 'problem-id',
             1, PositionalArgumentMode.CHOICES, self.message,
             f'problem id to move to, one of {problem_ids}',
             choices=problem_ids
