@@ -60,6 +60,16 @@ class Messages:
 
     # GETTING USER INPUT
 
+    def get_command_parser(self) -> list[str]:
+        '''
+        Print the command suite parser header and get the args.
+        :return: the args
+        '''
+        header_str = StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr(' % ')
+        args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_parser)
+        # TODO: add a timestamp
+        return args_str.lower().split()
+
     def get_command_problem(self, contest_id: str, problem_id: str, time_limit: float, num_testcases: tuple[int, int],
                             testcase_mode: str, checker: str) -> list[str]:
         '''
@@ -134,6 +144,68 @@ class Messages:
 
         # add spaces between string and end_string
         return string + StylizedStr(' ' * num_spaces) + end_string
+
+    # PARSER CODEFORCES
+
+    def contest_parsing_online(self, contest_id: str) -> None:
+        '''
+        Print that the contest is being parsed online.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr(f'parsing contest "{contest_id}" online')
+        )
+
+    def contest_parsing_offline(self, contest_id: str) -> None:
+        '''
+        Print that the contest is being parsed offline.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr(f'parsing contest "{contest_id}" offline: getting the html manually, url copied to clipboard')
+        )
+
+    def contest_already_parsed(self, contest_id: str) -> None:
+        '''
+        Print that the contest has already been parsed.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr('contest ') + StylizedStr(contest_id, HEADER_CONTEST_COLOR)
+            + StylizedStr(' already parsed, loading')
+        )
+
+    def creating_contest(self, contest_id: str) -> None:
+        '''
+        Print that the contest is being created.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr('creating contest ') + StylizedStr(contest_id, HEADER_CONTEST_COLOR)
+        )
+
+    def contest_doesnt_exist(self, contest_id: str) -> None:
+        '''
+        Print that the contest doesn't exist.
+        :param contest_id: contest's id
+        '''
+        self.log.print(
+            StylizedStr(f'contest "{contest_id}" ') + StylizedStr('doesn\'t', bold=True) + StylizedStr(' exist')
+        )
+
+    # PARSER CONFIG
+
+    # PARSER HELP
+
+    # PARSER QUIT
+
+    def quit_parser(self) -> None:
+        '''
+        Print that the user is quitting the parser.
+        '''
+        self.log.print(
+            StylizedStr('quitting the parser')
+        )
 
     # PROBLEM EDIT
 
@@ -462,7 +534,7 @@ class Messages:
         )
 
     def view_testcases(self, testcase_names: list[str],
-                          testcase_ids: list[str], io_pairs: list[tuple[str, str]]) -> None:
+                       testcase_ids: list[str], io_pairs: list[tuple[str, str]]) -> None:
         '''
         Print the testcases.
         :param testcase_names: the names of the testcases

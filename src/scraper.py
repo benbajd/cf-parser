@@ -6,6 +6,7 @@ from itertools import batched
 import requests
 from bs4 import BeautifulSoup
 from messages import Messages
+import configs
 
 
 class ProblemOnline(TypedDict):
@@ -30,11 +31,20 @@ class Scraper(Protocol):
         '''
 
     @staticmethod
-    def scrape_problems(contest_id: str, message: Messages) -> list[ProblemOnline]:
+    def get_contest_url(contest_id: str) -> str:
+        '''
+        Gets the url for a given contest id.
+        :param contest_id: the contest id
+        :return: the url
+        '''
+
+    @staticmethod
+    def scrape_problems(contest_id: str, message: Messages, html_data: Optional[str] = None) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given contest id.
         :param contest_id: the contest id
         :param message: the message object that handles printing
+        :param html_data: the html data if the contest was parsed offline else None
         :returns a list of problems represented as ProblemDummy
         '''
 
@@ -53,15 +63,25 @@ class ScraperCodeforces(Scraper):
         return [contest['id'] for contest in all_contests]
 
     @staticmethod
-    def scrape_problems(contest_id: str, message: Messages) -> list[ProblemOnline]:
+    def get_contest_url(contest_id: str) -> str:
+        '''
+        Gets the url for a given Codeforces contest id.
+        :param contest_id: the contest id
+        :return: the url
+        '''
+        return f'https://codeforces.com/contest/{contest_id}/problems'
+
+    @staticmethod
+    def scrape_problems(contest_id: str, message: Messages, html_data: Optional[str] = None) -> list[ProblemOnline]:
         '''
         Scrapes all problems for a given Codeforces contest id.
         :param contest_id: the contest id
         :param message: the message object that handles printing
+        :param html_data: the html data if the contest was parsed offline else None
         :returns a list of problems
         '''
         soup = BeautifulSoup(
-            read_online(f'https://codeforces.com/contest/{contest_id}/problems', message),
+            read_online(ScraperCodeforces.get_contest_url(contest_id), message) if html_data is None else html_data,
             'html.parser'
         )
         problem_tags = soup.find_all(attrs={'class': 'problemindexholder'})
@@ -94,7 +114,9 @@ def read_online(url: str, message: Messages) -> str:
     response = requests.get(url)
     while response.status_code != 200:
         response = requests.get(url)
-    return response.text
+    html_data = response.text
+    configs.offline_html.write_file(html_data)
+    return html_data
     # TODO: return after some amount of failed attempts
 
 

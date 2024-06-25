@@ -49,3 +49,28 @@ class Parser:
 
             # execute the command
             command, parsed_args = parsed_command_args
+
+            if command == CommandsParser.CODEFORCES:
+                contest_id: str = json.loads(parsed_args['contest-id'])
+                parse_offline = bool(json.loads(parsed_args['offline'])[0] == 'True')
+
+                contest = Contest(
+                    contest_id, self.dirs.get_contest(contest_id), self.message, ScraperCodeforces, parse_offline
+                )
+                contest.process_commands()
+
+            elif command == CommandsParser.CONFIG:
+                # TODO: run config
+                pass
+
+            elif command == CommandsParser.HELP:
+                help_args = json.loads(parsed_args['command'])
+                command_name: Optional[str] = None if len(help_args) == 0 else help_args[0]
+                command_suite.print_help_strings(command_name)
+
+            elif command == CommandsParser.QUIT:
+                self.message.quit_parser()
+                break
+
+            else:
+                assert False  # needs more commands
