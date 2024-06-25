@@ -340,13 +340,13 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             ]
         )
 
-        # command help
+        # help command
         # h, help command[?]
         arg_help_command = PositionalArgument(
             'command', 'command',
             '?', PositionalArgumentMode.CHOICES, self.message,
             'the command to display help for if specified or all otherwise',
-            [
+            choices=[
                 command_edit.short_name, command_edit.long_name,
                 command_custom_invocation.short_name, command_custom_invocation.long_name,
                 command_run.short_name, command_run.long_name,
@@ -403,6 +403,154 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             }
 
     def parse(self, args: list[str]) -> Optional[tuple[CommandsProblem, dict[str, str]]]:
+        '''
+        Parse the command and arguments.
+        :param args: the given arguments
+        :return: the parsed command and arguments if parsed successfully or None otherwise
+        '''
+        # no command given
+        if len(args) == 0:
+            self.message.command_suite_no_command_given()
+            return None
+
+        # TODO: aliases
+
+        # no command with that name
+        if args[0] not in self.command_names:
+            self.message.command_suite_not_a_command(args[0])
+            return None
+
+        # parse the args
+        command = self.command_names[args[0]]
+        parsed_args = command.parse(args[1:])
+        if parsed_args is not None:
+            return command.command, parsed_args
+        else:
+            return None
+
+    def print_help_strings(self, command_name: Optional[str]) -> None:
+        '''
+        Print the short help strings for all commands if command is not given
+        or the long help string for command otherwise.
+        :param command_name: the command to print the help string for, must be the name of one of the commands
+        '''
+        if command_name is None:
+            for command in self.all_commands:
+                command.print_help_str_short()
+        else:
+            assert command_name in self.command_names
+            self.command_names[command_name].print_help_str_long()
+
+
+class CommandsParser(IntEnum):
+    '''The commands for parser.'''
+    CODEFORCES = 1  # cf, codeforces contest-id [-o]
+    CONFIG = 2  # c, config
+    HELP = 3  # h, help command[?]
+    QUIT = 4  # q, quit
+
+
+class CommandSuiteParser(CommandSuite[CommandsParser]):
+    '''An immutable command suite for the parser.'''
+    all_commands: list[Command[CommandsParser]]  # the list of commands
+    message: Messages  # the message object that handles printing
+    command_names: dict[str, Command[CommandsParser]]  # the dict of command names to commands
+
+    def __init__(self, message: Messages) -> None:
+        '''
+        Init CommandSuiteParser.
+        :param message: the message object that handles printing
+        '''
+        # set message
+        self.message = message
+
+        # codeforces command
+        # cf, codeforces contest-id [-o]
+        arg_codeforces_contest = PositionalArgument(
+            'contest-id', 'contest-id',
+            1, PositionalArgumentMode.INT_RANGE, self.message,
+            'the contest id',
+            num_range=(1, 9999)
+        )
+        arg_codeforces_offline = OptionalArgument(
+            '-o', '--offline', 'offline',
+            0, OptionalArgumentMode.BOOL_FLAG, self.message,
+            'parse offline',
+            ['False']
+        )
+        command_codeforces = Command(
+            'cf', 'codeforces', CommandsParser.CODEFORCES,
+            [arg_codeforces_contest], [arg_codeforces_offline], False,
+            self.message,
+            [
+                'Parse the Codeforces contest', arg_codeforces_contest.get_name_short(), '. When',
+                arg_codeforces_offline.short_flag, 'is given, parse the contest offline by manually '
+                'copying the .html file.'
+            ]
+        )
+
+        # config command
+        # c, config
+        command_config = Command(
+            'c', 'config', CommandsParser.CONFIG,
+            [], [], False,
+            self.message,
+            [
+                'Run config to set the contest folders, .cpp template, default editor, compiler, etc.'
+            ]
+        )
+
+        # help command
+        # h, help command[?]
+        arg_help_command = PositionalArgument(
+            'command', 'command',
+            '?', PositionalArgumentMode.CHOICES, self.message,
+            'the command to display help for if specified or all otherwise',
+            choices=[
+                command_codeforces.short_name, command_codeforces.long_name,
+                command_config.short_name, command_config.long_name,
+                'h', 'help',
+                'q', 'quit'
+            ]
+        )
+        command_help = Command(
+            'h', 'help', CommandsParser.HELP,
+            [arg_help_command], [], False,
+            self.message,
+            [
+                'If', arg_help_command.get_name_short(), 'is not given, show short help strings for all commands. '
+                'Otherwise, show long help string for', arg_help_command.get_name_short(), '.'
+            ]
+        )
+
+        # quit command
+        # q, quit
+        command_quit = Command(
+            'q', 'quit', CommandsParser.QUIT,
+            [], [], False,
+            self.message,
+            [
+                'Quit the parser.'
+            ]
+        )
+
+        # set all_commands
+        self.all_commands = [
+            command_codeforces,
+            command_config,
+            command_help,
+            command_quit
+        ]
+
+        # set command_names
+        self.command_names: dict[str, Command[CommandsParser]] = {}
+        for command in self.all_commands:
+            self.command_names |= {
+                command.short_name: command,
+                command.long_name: command
+            }
+
+    def parse(self, args: list[str]) -> Optional[tuple[CommandsParser, dict[str, str]]]:
         '''
         Parse the command and arguments.
         :param args: the given arguments
