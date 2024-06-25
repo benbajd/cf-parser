@@ -2,6 +2,7 @@
 
 from enum import Enum, IntEnum
 from typing import Protocol, Optional, Callable
+from datetime import datetime
 from dataclasses import dataclass
 import os
 from functools import partial
@@ -390,8 +391,9 @@ class PrintFileInputOnly(Print):
         Print the string to the file by omitting all styles and add a timestamp. Should only be called by get_input.
         :param string: the input string
         '''
-        # TODO: add a timestamp
-        self.file.append_file(string.plain_string() + '\n')
+        time_now = datetime.now().astimezone()  # get the local timezone
+        input_str = time_now.strftime('[%Z %m/%d/%Y %I:%M:%S.%f %p] ') + string.plain_string() + '\n'
+        self.file.append_file(input_str)
 
 
 class PrintBatched(Print):

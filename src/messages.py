@@ -1,6 +1,7 @@
 '''Implements the messages class for printing messages and getting user input.'''
 
 from typing import TypeVar, Optional, Literal
+from datetime import datetime
 from prints import Print, StylizedStr, Colors, get_terminal_width
 from verdicts import CompileVerdict, RunVerdict
 import configs
@@ -10,6 +11,7 @@ HEADER_CONTEST_COLOR = Colors.GREEN
 HEADER_PROBLEM_COLOR = Colors.PINK
 HEADER_MODES_COLOR = Colors.LIGHT_BLUE
 HEADER_MODES_DELIM_COLOR = Colors.GRAY
+HEADER_TIME_COLOR = Colors.GRAY
 
 # the colors for compile verdicts
 COMPILE_VERDICT_COLORS: dict[CompileVerdict, Colors] = {
@@ -65,9 +67,15 @@ class Messages:
         Print the command suite parser header and get the args.
         :return: the args
         '''
+        # print the header and get the args
         header_str = StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr(' % ')
         args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_parser)
-        # TODO: add a timestamp
+        # print the current time
+        time_now = datetime.now()
+        self.log.update_previous(
+            StylizedStr(time_now.strftime('%a %I:%M:%S %p'), HEADER_TIME_COLOR)
+        )
+        # return a list of lowercase args
         return args_str.lower().split()
 
     def get_command_problem(self, contest_id: str, problem_id: str, time_limit: float, num_testcases: tuple[int, int],
@@ -82,6 +90,7 @@ class Messages:
         :param checker: the checker
         :return: the args
         '''
+        # print the header and get the args
         modes_delim = StylizedStr('|', HEADER_MODES_DELIM_COLOR)
         header_str = (
             StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr('/')  # username
@@ -100,7 +109,12 @@ class Messages:
             + StylizedStr('% ')
         )
         args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_problem)
-        # TODO: add a timestamp
+        # print the current time
+        time_now = datetime.now()
+        self.log.update_previous(
+            StylizedStr(time_now.strftime('%a %I:%M:%S %p'), HEADER_TIME_COLOR)
+        )
+        # return a list of lowercase args
         return args_str.lower().split()
 
     def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
