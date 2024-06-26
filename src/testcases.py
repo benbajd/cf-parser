@@ -213,10 +213,13 @@ class TestCase:
             return False, False
         num_multitests = int(first_input_line)
 
-        # check the double newline counts
+        # check no double empty lines and the double newline counts
         return (
-            bool(multitest_input.count('\n\n') == num_multitests),  # split at t
-            check_multitest_output and bool(multitest_output.count('\n\n') == num_multitests - 1)  # no t in the output
+            multitest_input.find('\n\n\n') == -1  # no double empty lines
+            and bool(multitest_input.count('\n\n') == num_multitests),  # split at t
+            multitest_output.find('\n\n\n') == -1  # no double empty lines
+            and check_multitest_output  # header and tokens check
+            and bool(multitest_output.count('\n\n') == num_multitests - 1)  # no t in the output
         )
 
     def get_multitests(self) -> list[tuple[str, str]]:

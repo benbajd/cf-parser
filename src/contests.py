@@ -10,6 +10,7 @@ from messages import Messages
 from commandsuites import CommandsProblem
 from execution import Execution
 import configs
+from testcases import TestCaseMode
 
 
 class Contest:
@@ -83,11 +84,21 @@ class Contest:
                 scraped_data
             )
 
-        # TODO: print which problems don't have multitests
-
         # save the contest data
         problem_ids: list[str] = list(self.problems.keys())
         self.dirs.get_contest_data().write_file(json.dumps(problem_ids))
+
+        # print which problems have multitests
+        self.message.contest_created_multitest_types(
+            list(filter(
+                lambda problem_id_multitest: self.problems[problem_id_multitest].testcase_mode == TestCaseMode.MULTIPLE,
+                problem_ids
+            )),
+            list(filter(
+                lambda problem_id_multitest: self.problems[problem_id_multitest].testcase_mode == TestCaseMode.ONE,
+                problem_ids
+            ))
+        )
 
     def init_offline(self) -> None:
         '''

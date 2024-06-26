@@ -207,6 +207,28 @@ class Messages:
             StylizedStr(f'contest "{contest_id}" ') + StylizedStr('doesn\'t', bold=True) + StylizedStr(' exist')
         )
 
+    def contest_created_multitest_types(self, problems_multitests: list[str], problems_one: list[str]) -> None:
+        '''
+        Print which problems have multitests available.
+        :param problems_multitests: the problems with multitests
+        :param problems_one: the problems without multitests
+        '''
+        if len(problems_one) == 0 or len(problems_multitests) == 0:  # all or none have multitests
+            self.log.print(
+                StylizedStr('multitests available in ')
+                + StylizedStr('all' if len(problems_one) == 0 else 'none', bold=True)
+                + StylizedStr(' of the problems')
+            )
+        else:  # at least one problem of each type
+            self.log.print(
+                StylizedStr('multitests ') + StylizedStr('available', bold=True)
+                + StylizedStr(f' in {self.helper_get_plural('problem', len(problems_multitests))} ')
+                + StylizedStr(', '.join(problems_multitests), HEADER_PROBLEM_COLOR)
+                + StylizedStr(', ') + StylizedStr('not available', bold=True)
+                + StylizedStr(f' in {self.helper_get_plural('problem', len(problems_one))} ')
+                + StylizedStr(', '.join(problems_one), HEADER_PROBLEM_COLOR)
+            )
+
     # PARSER CONFIG
 
     # PARSER HELP
