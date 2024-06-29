@@ -632,6 +632,87 @@ class Messages:
             StylizedStr('quitting contest ') + StylizedStr(contest_id, HEADER_CONTEST_COLOR)
         )
 
+    # ALIASES
+
+    def cant_alias_command(self, alias_name: str) -> None:
+        '''
+        Print that a command can't be aliased.
+        :param alias_name: alias' name
+        '''
+        self.log.print(
+            StylizedStr('alias ') + StylizedStr('failed', bold=True) + StylizedStr(' since ')
+            + StylizedStr(f'"{alias_name}" is a command')
+        )
+
+    def alias_failed(self, first_arg: Optional[str]) -> None:
+        '''
+        Print that alias failed since the first arg was either not a command or not given.
+        :param first_arg: the first arg that is not a command if given or None if not given
+        '''
+        failed_str = StylizedStr('alias ') + StylizedStr('failed', bold=True) + StylizedStr(' since ')
+        if first_arg is not None:
+            failed_str += StylizedStr(f'"{first_arg}" is not a command')
+        else:
+            failed_str += StylizedStr(f'no args were given to alias to')
+        self.log.print(failed_str)
+
+    def aliased_successfully(self, alias_name: str, alias_args: list[str]) -> None:
+        '''
+        Print that alias_name was successfully aliased to alias_args.
+        :param alias_name: alias' name
+        :param alias_args: the args that alias_name was successfully aliased to
+        '''
+        self.log.print(
+            StylizedStr(alias_name, COMMAND_COLOR) + StylizedStr(' was ')
+            + StylizedStr('aliased', bold=True) + StylizedStr(' to ')
+            + StylizedStr(f'"{' '.join(alias_args)}"')
+        )
+
+    def unalised_successfully(self, alias_name: str) -> None:
+        '''
+        Print that alias_name was successfully unaliased.
+        :param alias_name: alias' name
+        '''
+        self.log.print(
+            StylizedStr(alias_name, COMMAND_COLOR) + StylizedStr(' was ') + StylizedStr('unaliased', bold=True)
+        )
+
+    def unalias_failed(self, alias_name: str, args_given: bool) -> None:
+        '''
+        Print that unalias failed since alias_name isn't an alias or args were given.
+        :param alias_name: alias' name
+        :param args_given: True if args were given or False otherwise
+        '''
+        failed_str = StylizedStr('unalias ') + StylizedStr('failed', bold=True) + StylizedStr(' since ')
+        if not args_given:
+            failed_str += StylizedStr(f'"{alias_name}" is not an alias')
+        else:
+            failed_str += StylizedStr(f'args were given')
+        self.log.print(failed_str)
+
+    def alias_help_str(self, alias_name: str, alias_args: list[str]) -> None:
+        '''
+        Print the help string for an alias.
+        :param alias_name: alias' name
+        :param alias_args: the args that alias_name is aliased to
+        '''
+        self.log.print(
+            StylizedStr(alias_name, COMMAND_COLOR) + StylizedStr(' is an alias to ')
+            + StylizedStr(f'"{' '.join(alias_args)}"')
+        )
+
+    def alias_all_help_str(self, aliases: dict[str, list[str]]) -> None:
+        '''
+        Print the help string for all aliases.
+        :param aliases: the aliases dict where keys are alias names and values are the args they are aliased to
+        '''
+        if len(aliases) >= 1:
+            self.log.print(StylizedStr('all aliases:'))
+            for alias_name, alias_args in aliases.items():
+                self.alias_help_str(alias_name, alias_args)
+        else:
+            self.log.print(StylizedStr('no aliases set'))
+
     # MULTITESTS
 
     def multitests_edit_option(self, testcase_id: int, io_file: Literal['input', 'output'],
@@ -917,7 +998,12 @@ class Messages:
         '''
         help_stylized_str = StylizedStr()
         for idx, help_str_pair in enumerate(help_str):
-            if idx != 0 and (len(help_str_pair[0]) == 0 or help_str_pair[0][0] not in (',', '.')):  # no space on '.,'
+            add_space = (
+                idx != 0
+                and (len(help_str_pair[0]) == 0 or help_str_pair[0][0] not in (',', '.'))  # no space on '.,'
+                and (len(help_str[idx - 1][0]) == 0 or help_str[idx - 1][0][-1] != '(')  # no space on '('
+            )
+            if add_space:
                 help_stylized_str += StylizedStr(' ')
             if idx % 2 == 0:  # help str
                 help_stylized_str += StylizedStr(help_str_pair[0])

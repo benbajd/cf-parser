@@ -15,6 +15,7 @@ class CommandSuite(Protocol[T]):
     '''An immutable command suite defining commands.'''
     all_commands: list[Command[T]]  # the list of commands
     message: Messages  # the message object that handles printing
+    command_names: dict[str, Command[T]]  # the dict of command names to commands
 
     def parse(self, args: list[str]) -> Optional[tuple[T, dict[str, str]]]:
         '''
@@ -37,12 +38,13 @@ class CommandsProblem(IntEnum):
     CUSTOM_INVOCATION = 2  # c, custom-invocation [-f file]
     RUN = 3  # r, run [-t tl] [-m multitest-mode] [-c checker] [-n]
     SET = 4  # s, set [-t tl] [-m multitest-mode] [-c checker]
-    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [-e tc] [--view tc?]
+    INPUT_OUTPUT = 5  # io, input-output [-r rm_cnt | -k keep_cnt | --multitests tc? | --add | -e tc | --view tc?]
     RANDOM = 6  # n, random num [-t tl] [-c checker] [-s total-timeout]
     PASTE = 7  # p, paste
     MOVE = 8  # m, move problem
-    HELP = 9  # h, help command[?]
-    QUIT = 10  # q, quit
+    ALIAS = 9  # a, alias command[?] args[?] [-u]
+    HELP = 10  # h, help command[?]
+    QUIT = 11  # q, quit
 
 
 class CommandSuiteProblem(CommandSuite[CommandsProblem]):
@@ -201,7 +203,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
         )
 
         # input output command
-        # io, input-output [-r rm_cnt] [-k keep_cnt] [--multitests tc?] [--add] [-e tc] [--view tc?]
+        # io, input-output [-r rm_cnt | -k keep_cnt | --multitests tc? | --add | -e tc | --view tc?]
         arg_input_output_remove = OptionalArgument(
             '-r', '--remove', 'remove',
             1, OptionalArgumentMode.INT_RANGE, self.message,
@@ -340,6 +342,43 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             ]
         )
 
+        # alias command
+        # a, alias command[?] args[?] [-u]
+        arg_alias_command = PositionalArgument(
+            'command', 'command',
+            '?', PositionalArgumentMode.ANY, self.message,
+            'the command to alias if given or show all aliases if not given'
+        )
+        arg_alias_args = PositionalArgument(
+            'args', 'args',
+            '?', PositionalArgumentMode.ANY, self.message,
+            'the args the command should be aliased to'
+        )
+        arg_alias_unalias = OptionalArgument(
+            '-u', '--unalias', 'unalias',
+            0, OptionalArgumentMode.BOOL_FLAG, self.message,
+            'when set, unalias the command',
+            ['False']
+        )
+        command_alias = Command(
+            'a', 'alias', CommandsProblem.ALIAS,
+            [
+                arg_alias_command, arg_alias_args
+            ], [arg_alias_unalias], False,
+            self.message,
+            [
+                'Alias and unalias commands. When', arg_alias_command.get_name_short(), 'is given, alias',
+                arg_alias_command.get_name_short(), 'to', arg_alias_args.get_name_short(), 'if',
+                arg_alias_unalias.short_flag, 'is not set (', arg_alias_command.get_name_short(),
+                'should not be a command and the first arg in', arg_alias_args.get_name_short(),
+                'should be a command (not an alias) in this case), or unalias', arg_alias_command.get_name_short(),
+                'if', arg_alias_unalias.short_flag, 'is set (', arg_alias_args.get_name_short(),
+                'shouldn\'t be given in this case). When', arg_alias_command.get_name_short(),
+                'is not given, show all current aliases. Note that when using aliases as commands, '
+                'no recursive expansion is performed.'
+            ]
+        )
+
         # help command
         # h, help command[?]
         arg_help_command = PositionalArgument(
@@ -355,6 +394,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
                 command_random.short_name, command_random.long_name,
                 command_paste.short_name, command_paste.long_name,
                 command_move.short_name, command_move.long_name,
+                command_alias.short_name, command_alias.long_name,
                 'h', 'help',
                 'q', 'quit'
             ]
@@ -390,6 +430,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
             command_random,
             command_paste,
             command_move,
+            command_alias,
             command_help,
             command_quit
         ]
