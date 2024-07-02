@@ -62,6 +62,22 @@ class Messages:
 
     # GETTING USER INPUT
 
+    def get_config_item(self, item_name: str, set_up: bool) -> str:
+        '''
+        Get a config item from user input.
+        :param item_name: config item's name
+        :param set_up: True if the config item is being set for the first time or False otherwise
+        :return: user input for the config item
+        '''
+        # get the input string
+        input_str = (
+            StylizedStr('enter ') + StylizedStr('' if set_up else 'a new ')
+            + StylizedStr(item_name, bold=True) + StylizedStr(': ')
+        )
+
+        # get user input
+        return self.log.get_input(input_str, StylizedStr(), configs.history_config_items)
+
     def get_command_parser(self) -> list[str]:
         '''
         Print the command suite parser header and get the args.
@@ -128,7 +144,7 @@ class Messages:
         # print the decision str
         decision_str = StylizedStr()
         for idx, decision_str_part in enumerate(decision_str_list):
-            decision_str += StylizedStr(decision_str_part, Colors.DEFAULT, bool(idx % 2 == 1))
+            decision_str += StylizedStr(decision_str_part, bold=bool(idx % 2 == 1))
         decision_str += StylizedStr(f' [{first_option}/[{second_option}]] ')
 
         # read the input and check if it matches the first option
@@ -230,6 +246,53 @@ class Messages:
             )
 
     # PARSER CONFIG
+
+    def config_item_failed(self, user_input: str, fail_reason: str) -> None:
+        '''
+        Print that the user input wasn't a config item.
+        :param user_input: user input
+        :param fail_reason: fail reason
+        '''
+        self.log.print(
+            StylizedStr(f'"{user_input}": ') + StylizedStr(fail_reason)
+        )
+
+    def config_item_edit_option(self, item_name: str, previous_value: str) -> bool:
+        '''
+        Get the user's decision on editing a config item.
+        :param item_name: config item's name
+        :param previous_value: the previous value of the config item
+        :return: True if the user wants to edit the config item or False otherwise
+        '''
+        return self.input_two_options(
+            ['', item_name, f' is currently "{previous_value}", would you like to edit it?']
+        )
+
+    def config_item_file_edit(self, item_name: str, set_up: bool) -> bool:
+        '''
+        Get the user's decision on editing a config item file.
+        :param item_name: config item's name
+        :param set_up: True if the config item is being set for the first time or False otherwise
+        :return: True if the user wants to edit the file or False otherwise
+        '''
+        return self.input_two_options([
+            'would you like to edit ', item_name,
+            (' (will be set to the default value otherwise)' if set_up else '') + '?',
+        ])
+
+    def config_item_file_editing(self, item_name: str) -> None:
+        '''
+        Print that the config item is now open for editing.
+        :param item_name: config item's name
+        '''
+        self.log.print(StylizedStr('editing ') + StylizedStr(item_name, bold=True))
+
+    def config_item_file_failed(self, fail_reason: str) -> None:
+        '''
+        Print that the user input wasn't a config item.
+        :param fail_reason: fail reason
+        '''
+        self.log.print(StylizedStr(fail_reason))
 
     # PARSER HELP
 

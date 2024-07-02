@@ -61,7 +61,7 @@ class Folder:
     def folder_exists(self) -> bool:
         '''
         Check if the folder exists.
-        :returns: true if the folder exists else false
+        :returns: True if the folder exists else False
         '''
         return os.path.isdir(str(self))
 
@@ -121,6 +121,13 @@ class File:
         Delete the file, requires the file to exist.
         '''
         os.remove(str(self))
+
+    def file_exists(self) -> bool:
+        '''
+        Check if the file exists.
+        :return: True if the file exists else False
+        '''
+        return os.path.isfile(str(self))
 
 
 def expand_home_directory(path: list[str]) -> list[str]:
