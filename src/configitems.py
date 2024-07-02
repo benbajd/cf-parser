@@ -107,6 +107,7 @@ class ConfigItemFile(ConfigItem[T]):
         :param check: the check function that checks if the inputted str is a T and returns (success, fail reason)
         :param get: the get function that gets a value from a string once check is called and returns success
         :param message: the message object that handles printing
+        :param default: the default value of the config item
         :param text_editor_command_wait: the command that opens a text editor for editing
         '''
         self.name = name

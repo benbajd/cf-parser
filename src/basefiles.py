@@ -1,5 +1,12 @@
 '''Creates the base .cpp files.'''
 
+HEADER_CPP: str = """\
+#include <bits/stdc++.h>
+
+using namespace std;
+typedef long long ll;
+"""
+
 MAIN_CPP: str = """\
 #include <bits/stdc++.h>
 

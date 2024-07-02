@@ -247,6 +247,12 @@ class Messages:
 
     # PARSER CONFIG
 
+    def running_config(self) -> None:
+        '''
+        Print that the configs are being set.
+        '''
+        self.log.print(StylizedStr('running config'))
+
     def config_item_failed(self, user_input: str, fail_reason: str) -> None:
         '''
         Print that the user input wasn't a config item.
