@@ -11,18 +11,22 @@ from threading import Thread
 import queue
 import execution
 from execution import Execution
+from configs import Configs
 
 
 class Runner:
     '''An immutable runner.'''
     message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
 
-    def __init__(self, message: Messages) -> None:
+    def __init__(self, message: Messages, config: Configs) -> None:
         '''
         Init Runner.
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         '''
         self.message = message
+        self.config = config
 
     def custom_invocation(self, file_cpp: File, file_out: File, one_char_name: str, long_name: str) -> None:
         '''
@@ -35,7 +39,7 @@ class Runner:
         # start compiling
         start_time = time.perf_counter()
         self.message.custom_invocation_start(one_char_name)
-        compile_result = Execution.compile(file_cpp, file_out)
+        compile_result = Execution.compile(file_cpp, file_out, self.config.cpp_compiler)
 
         # finish compiling
         end_time = time.perf_counter()
@@ -85,7 +89,7 @@ class Runner:
             and add to the compile_queue once done.
             :param compile_index: the index of the file to compile
             '''
-            compile_result = Execution.compile(*to_compile[compile_index])
+            compile_result = Execution.compile(*to_compile[compile_index], self.config.cpp_compiler)
             compile_verdicts[compile_index] = (  # no lock needed since only one thread writes to this index
                 CompileVerdict.SUCCESS if compile_result.success
                 else CompileVerdict.COMPILATION_ERROR

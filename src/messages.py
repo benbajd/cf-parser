@@ -4,7 +4,7 @@ from typing import TypeVar, Optional, Literal
 from datetime import datetime
 from prints import Print, StylizedStr, Colors, get_terminal_width
 from verdicts import CompileVerdict, RunVerdict
-import configs
+from paths import Folder, File
 
 HEADER_USERNAME_COLOR = Colors.ORANGE
 HEADER_CONTEST_COLOR = Colors.GREEN
@@ -39,6 +39,13 @@ SHORT_IO_LINES = 20  # number of io lines displayed when over the limit
 
 COMMAND_COLOR = Colors.LIGHT_GREEN
 ARGUMENT_COLOR = Colors.PINK  # TODO: change argument color so that it doesn't clash with problem ids
+
+# history files
+history_files_folder = Folder(['~', '.config', 'cf-parser'])  # TODO: move to some user specific class
+history_config_items: File = history_files_folder.down_file('config_items_history')
+history_command_suite_problem: File = history_files_folder.down_file('command_suite_problem_history')
+history_command_suite_parser: File = history_files_folder.down_file('command_suite_parser_history')
+history_two_options: File = history_files_folder.down_file('two_options_history')
 
 
 class Messages:
@@ -76,16 +83,17 @@ class Messages:
         )
 
         # get user input
-        return self.log.get_input(input_str, StylizedStr(), configs.history_config_items)
+        return self.log.get_input(input_str, StylizedStr(), history_config_items)
 
-    def get_command_parser(self) -> list[str]:
+    def get_command_parser(self, username: str) -> list[str]:
         '''
         Print the command suite parser header and get the args.
+        :param username: the username
         :return: the args
         '''
         # print the header and get the args
-        header_str = StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr(' % ')
-        args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_parser)
+        header_str = StylizedStr(username, HEADER_USERNAME_COLOR) + StylizedStr(' % ')
+        args_str = self.log.get_input(header_str, StylizedStr(), history_command_suite_parser)
         # print the current time
         time_now = datetime.now()
         self.log.update_previous(
@@ -94,10 +102,11 @@ class Messages:
         # return a list of lowercase args
         return args_str.lower().split()
 
-    def get_command_problem(self, contest_id: str, problem_id: str, time_limit: float, num_testcases: tuple[int, int],
-                            testcase_mode: str, checker: str) -> list[str]:
+    def get_command_problem(self, username: str, contest_id: str, problem_id: str, time_limit: float,
+                            num_testcases: tuple[int, int], testcase_mode: str, checker: str) -> list[str]:
         '''
         Print the command suite problem header and get the args.
+        :param username: the username
         :param contest_id: contest's id
         :param problem_id: problem's id
         :param time_limit: the time limit
@@ -109,7 +118,7 @@ class Messages:
         # print the header and get the args
         modes_delim = StylizedStr('|', HEADER_MODES_DELIM_COLOR)
         header_str = (
-            StylizedStr(configs.username, HEADER_USERNAME_COLOR) + StylizedStr('/')  # username
+            StylizedStr(username, HEADER_USERNAME_COLOR) + StylizedStr('/')  # username
             + StylizedStr(contest_id, HEADER_CONTEST_COLOR) + StylizedStr('/')  # contest
             + StylizedStr(problem_id, HEADER_PROBLEM_COLOR) + StylizedStr(' ')  # problem
             + StylizedStr('[')
@@ -124,7 +133,7 @@ class Messages:
             + StylizedStr('] ')
             + StylizedStr('% ')
         )
-        args_str = self.log.get_input(header_str, StylizedStr(), configs.history_commandsuite_problem)
+        args_str = self.log.get_input(header_str, StylizedStr(), history_command_suite_problem)
         # print the current time
         time_now = datetime.now()
         self.log.update_previous(
@@ -148,7 +157,7 @@ class Messages:
         decision_str += StylizedStr(f' [{first_option}/[{second_option}]] ')
 
         # read the input and check if it matches the first option
-        input_str = self.log.get_input(decision_str, StylizedStr(), configs.history_two_options)
+        input_str = self.log.get_input(decision_str, StylizedStr(), history_two_options)
         return input_str.lower() == first_option.lower()
 
     # HELPER FUNCTIONS

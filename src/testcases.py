@@ -6,7 +6,7 @@ from paths import File
 from dataclasses import dataclass
 from messages import Messages
 from execution import Execution
-import configs
+from configs import Configs
 
 
 class TestCaseType(IntEnum):
@@ -55,9 +55,10 @@ class TestCase:
     entire_testcase: IOPair  # the entire testcase
     multiple_testcases: Optional[IOPair]  # the split testcases if testcase type is scraped
     message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
 
     def __init__(self, testcase_id: int, testcase_type: TestCaseType,
-                 entire_testcase: IOPair, multiple_testcases: Optional[IOPair], message: Messages,
+                 entire_testcase: IOPair, multiple_testcases: Optional[IOPair], message: Messages, config: Configs,
                  init_mode: Literal['online', 'offline', 'not_scraped'], io_pair: Optional[tuple[str, str]] = None,
                  multitests_inputs: Optional[list[str]] = None, multitests_outputs: Optional[list[str]] = None) -> None:
         '''
@@ -71,6 +72,7 @@ class TestCase:
         :param entire_testcase: the entire testcase
         :param multiple_testcases: the multitest files if testcase type is scraped, or None otherwise
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         :param init_mode: the init mode, 'online' or 'offline' when parsing or 'not_scraped' when not scraped
         :param io_pair: the (io_input, io_output) pair or None when parsing offline
         :param multitests_inputs: the multitests inputs if split successfully or None otherwise
@@ -81,6 +83,7 @@ class TestCase:
         self.entire_testcase = entire_testcase
         self.multiple_testcases = multiple_testcases
         self.message = message
+        self.config = config
 
         # asserts
         # check that the type isn't scraped when init_mode is 'not_scraped'
@@ -285,7 +288,7 @@ class TestCase:
                 if self.message.multitests_edit_option(self.testcase_id, io_file, io_file_check):  # user wants to split
                     # wait on the user to edit the multitests in the text editor
                     Execution.execute(
-                        configs.text_editor_command_wait + [str(multitest_file)],
+                        self.config.text_editor_command_wait + [str(multitest_file)],
                         None
                     )
                     # check if split correctly
@@ -352,8 +355,9 @@ class TestCaseSet:
     '''A mutable testcase set.'''
     all_testcases: list[TestCase]  # the testcases
     message: Messages  # the message object that handles printing
+    config: Configs
 
-    def __init__(self, num_testcases: int, init_mode: Literal['online', 'offline'], message: Messages,
+    def __init__(self, num_testcases: int, init_mode: Literal['online', 'offline'], message: Messages, config: Configs,
                  entire_testcases: list[IOPair], multiple_testcases: list[Optional[IOPair]],
                  io_pairs: Optional[list[tuple[str, str]]],
                  io_multitest_inputs: Optional[list[list[str]]], io_multitest_outputs: Optional[list[list[str]]],
@@ -365,6 +369,7 @@ class TestCaseSet:
         :param num_testcases: the number of testcases
         :param init_mode: the init mode, 'online' when parsing online or 'offline' when parsing offline
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         :param entire_testcases: the entire testcase files
         :param multiple_testcases: the multiple testcase files for scraped problems or None for not scraped ones
         :param io_pairs: (io_input, io_output) pairs for each testcase, should be given when parsing online
@@ -395,8 +400,9 @@ class TestCaseSet:
             assert io_multitest_inputs is None and io_multitest_outputs is None
         assert bool(init_mode == 'offline') == bool(testcase_types is not None)
 
-        # set message and all_testcases
+        # set message, config, and all_testcases
         self.message = message
+        self.config = config
         self.all_testcases: list[TestCase] = []
 
         # parsing online
@@ -419,7 +425,7 @@ class TestCaseSet:
                     TestCase(
                         io_id + 1, TestCaseType.SCRAPED,
                         entire_testcase, multiple_testcase,
-                        self.message, 'online',
+                        self.message, self.config, 'online',
                         io_pair, io_multitest_input, io_multitest_output
                     )
                 )
@@ -438,7 +444,7 @@ class TestCaseSet:
                     TestCase(
                         io_id + 1, testcase_type,
                         entire_testcase, multiple_testcase,
-                        self.message, 'offline',
+                        self.message, self.config, 'offline',
                         None, None, None  # testcases are in the files
                     )
                 )
@@ -559,7 +565,7 @@ class TestCaseSet:
         new_testcase = TestCase(
             testcase_id, TestCaseType.USER_ADDED,
             entire_testcase, None,
-            self.message, 'not_scraped',
+            self.message, self.config, 'not_scraped',
             ('', ''), None, None
         )
         self.all_testcases.append(new_testcase)
@@ -571,7 +577,7 @@ class TestCaseSet:
         ]
         for io_file, edit_file in both_pairs:
             self.message.editing_testcase(new_testcase.get_name(), io_file, True)
-            Execution.execute(configs.text_editor_command_wait + [str(edit_file)], None)
+            Execution.execute(self.config.text_editor_command_wait + [str(edit_file)], None)
 
     def edit_testcase(self, testcase_id: int) -> None:
         '''
@@ -589,7 +595,7 @@ class TestCaseSet:
         ]
         for io_file, edit_file in both_pairs:
             self.message.editing_testcase(testcase.get_name(), io_file, False)
-            Execution.execute(configs.text_editor_command_wait + [str(edit_file)], None)
+            Execution.execute(self.config.text_editor_command_wait + [str(edit_file)], None)
 
     def view_testcases(self, testcase_mode: TestCaseMode, testcase_id: Optional[int]) -> None:
         '''

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Optional
 from enum import IntEnum
 from paths import File
-import configs
 
 
 @dataclass
@@ -56,14 +55,15 @@ class Execution:
         )
 
     @staticmethod
-    def compile(file: File, file_out: File) -> CompileResult:
+    def compile(file: File, file_out: File, cpp_compiler: str) -> CompileResult:
         '''
         Compile a .cpp program.
         :param file: the .cpp file to compile
         :param file_out: the output .out file
+        :param cpp_compiler: the cpp compiler
         :return: the result of compile
         '''
-        execute_result = Execution.execute([configs.cpp_compiler, '-std=c++20', str(file), '-o', str(file_out)], None)
+        execute_result = Execution.execute([cpp_compiler, '-std=c++20', str(file), '-o', str(file_out)], None)
         return CompileResult(execute_result.return_code == 0)
 
     @staticmethod

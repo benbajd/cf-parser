@@ -218,7 +218,8 @@ class PrintTerminal(Print):
         '''
         # set the input history
         readline.clear_history()
-        readline.read_history_file(str(history_file))
+        if history_file.file_exists():
+            readline.read_history_file(str(history_file))
 
         # print the prompt and get user input
         prompt_str = ''.join(self.print_base(base_string) for base_string in string.string)

@@ -13,7 +13,7 @@ from checkers import Checker
 from runners import Runner
 from commandsuites import CommandSuiteProblem, CommandsProblem
 from execution import Execution
-import configs
+from configs import Configs
 
 
 class ProblemOffline(TypedDict):
@@ -33,13 +33,14 @@ class Problem:
     folder: Folder  # problem's folder
     dirs: DirsProblem  # problem's dirs handler
     message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
     time_limit: float  # problem's time limit
     testcase_set: TestCaseSet  # problem's testcases
     testcase_mode: TestCaseMode  # the mode of running testcases
     checker: Checker  # the checker
     runner: Runner  # the runner
 
-    def __init__(self, problem_id: str, contest_id: str, folder: Folder, message: Messages,
+    def __init__(self, problem_id: str, contest_id: str, folder: Folder, message: Messages, config: Configs,
                  scraped_data: Optional[ProblemOnline]) -> None:
         '''
         Init the problem using the online data if scraped_data is provided or the offline data otherwise.
@@ -47,14 +48,16 @@ class Problem:
         :param contest_id: the contest
         :param folder: the problem's folder
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         :param scraped_data: the online data if scraped initially
         '''
         self.problem_id = problem_id
         self.contest_id = contest_id
         self.folder = folder
         self.message = message
+        self.config = config
         self.dirs = DirsProblem(folder, contest_id, problem_id)
-        self.runner = Runner(message)
+        self.runner = Runner(self.message, self.config)
         if scraped_data is not None:
             self.init_online(scraped_data)
         else:
@@ -76,7 +79,7 @@ class Problem:
         # set the testcase set
         num_testcases = len(scraped_data['io'])
         self.testcase_set = TestCaseSet(
-            num_testcases, 'online', self.message,
+            num_testcases, 'online', self.message, self.config,
             [
                 IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
                 for io_id in range(num_testcases)
@@ -121,7 +124,7 @@ class Problem:
         # set the testcase_set
         num_testcases = len(problem_data['testcase_types'])
         self.testcase_set = TestCaseSet(
-            num_testcases, 'offline', self.message,
+            num_testcases, 'offline', self.message, self.config,
             [
                 IOPair(self.dirs.get_input(io_id + 1), self.dirs.get_output(io_id + 1))
                 for io_id in range(num_testcases)
@@ -168,7 +171,7 @@ class Problem:
 
             # print the header and get the args
             args = self.message.get_command_problem(
-                self.contest_id, self.problem_id,
+                self.config.username, self.contest_id, self.problem_id,
                 self.time_limit, (len(self.testcase_set), self.testcase_set.get_num_multitests()),
                 'o' if self.testcase_mode == TestCaseMode.ONE else 'm', self.checker.one_char_name
             )
@@ -359,7 +362,6 @@ class Problem:
             else:
                 assert False  # needs more commands
 
-
     def get_cpp_file_pair(self, file: Literal['m', 'c', 'b', 'g']) -> tuple[File, File]:
         '''
         Get the .cpp and the .out pair of a file.
@@ -380,4 +382,4 @@ class Problem:
         :param file_cpp: the .cpp file to edit, one of main, checker, bruteforce, or generator
         '''
         file_edit = self.get_cpp_file_pair(file_cpp)[0]
-        Execution.execute(configs.code_editor_command + [str(file_edit)], None)
+        Execution.execute(self.config.code_editor_command + [str(file_edit)], None)

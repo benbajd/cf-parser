@@ -9,7 +9,7 @@ from directories import DirsContest
 from messages import Messages
 from commandsuites import CommandsProblem
 from execution import Execution
-import configs
+from configs import Configs
 from testcases import TestCaseMode
 
 
@@ -19,16 +19,18 @@ class Contest:
     folder: Folder  # contest's folder
     dirs: DirsContest  # contest's dirs handler
     message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
     scraper: Type[Scraper]  # the scraper to be used when initializing a new contest
     problems: dict[str, Problem]  # the problems in the contest, a mapping of problem_ids to problems
 
-    def __init__(self, contest_id: str, folder: Folder, message: Messages,
+    def __init__(self, contest_id: str, folder: Folder, message: Messages, config: Configs,
                  scraper: Type[Scraper], parse_offline: bool) -> None:
         '''
         Init the contest using the online data if the folder doesn't exist or the offline data otherwise.
         :param contest_id: contest's id
         :param folder: contest's folder
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         :param scraper: the scraper to use when initializing a new contest
         :param parse_offline: True if the contest should be parsed offline else False
         '''
@@ -36,6 +38,7 @@ class Contest:
         self.folder = folder
         self.dirs = DirsContest(folder)
         self.message = message
+        self.config = config
         self.scraper = scraper
         self.problems = {}
         if not self.folder.folder_exists():
@@ -52,18 +55,18 @@ class Contest:
         # scrape the problems
         if not parse_offline:  # read online
             self.message.contest_parsing_online(self.contest_id)
-            scraped_problems = self.scraper.scrape_problems(self.contest_id, self.message)
+            scraped_problems = self.scraper.scrape_problems(self.contest_id, self.message, self.config)
         else:  # offline mode
             # print parsing offline
             self.message.contest_parsing_offline(self.contest_id)
             # copy to clipboard
             Execution.execute(['pbcopy'], self.scraper.get_contest_url(self.contest_id))
             # empty the html file and open it for editing
-            configs.offline_html.write_file('')
-            Execution.execute(configs.text_editor_command_wait + [str(configs.offline_html)], None)
+            self.config.offline_html.write_file('')
+            Execution.execute(self.config.text_editor_command_wait + [str(self.config.offline_html)], None)
             # scrape the problems
             scraped_problems = self.scraper.scrape_problems(
-                self.contest_id, self.message, configs.offline_html.read_file()
+                self.contest_id, self.message, self.config, self.config.offline_html.read_file()
             )
 
         # delete the folder and return if the contest doesn't exist
@@ -81,6 +84,7 @@ class Contest:
                 self.contest_id,
                 self.dirs.get_problem(problem_id),
                 self.message,
+                self.config,
                 scraped_data
             )
 
@@ -115,6 +119,7 @@ class Contest:
                 self.contest_id,
                 self.dirs.get_problem(problem_id),
                 self.message,
+                self.config,
                 None
             )
 

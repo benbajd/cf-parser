@@ -1,9 +1,9 @@
 '''Implements config items.'''
 
 from typing import Generic, TypeVar, Protocol, Callable, Optional
-import subprocess
 from messages import Messages
 from paths import File
+from execution import Execution
 
 T = TypeVar('T')
 
@@ -148,7 +148,7 @@ class ConfigItemFile(ConfigItem[T]):
             while True:
                 # edit the file
                 self.message.config_item_file_editing(self.name)
-                subprocess.run(self.text_editor_command_wait + [str(self.file_edit)])  # TODO: call execution
+                Execution.execute(self.text_editor_command_wait + [str(self.file_edit)], None)
                 # check user input
                 user_input = self.file_edit.read_file()
                 success, fail_reason = self.check(user_input)

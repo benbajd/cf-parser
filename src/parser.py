@@ -5,31 +5,46 @@ from typing import Optional
 from scraper import ScraperCodeforces
 from contests import Contest
 from directories import DirsPlatform
-import configs
+from configs import Configs
 from prints import PrintTerminal, PrintFile, PrintFileInputOnly, PrintBatched
 from messages import Messages
 from commandsuites import CommandsParser, CommandSuiteParser
+from paths import Folder
 
 
 class Parser:
     '''An immutable parser.'''
     dirs: DirsPlatform  # parser's dirs handler
     message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
 
     def __init__(self) -> None:
         '''
         Init Parser.
         '''
-        self.dirs = DirsPlatform(configs.codeforces_folder)
+        # create .config folder
+        configs_parent_folder = Folder(['~', '.config'])
+        if not configs_parent_folder.folder_exists():
+            configs_parent_folder.create_folder()
+
+        # get a temporary config object with a temporary output to a terminal only
+        configs_folder = configs_parent_folder.down('cf-parser')
+        temp_config = Configs(configs_folder, Messages(PrintTerminal()), True)  # TODO: store the temporary file outputs
+
+        # create the dirs and message
+        self.dirs = DirsPlatform(temp_config.codeforces_folder)
         self.message = Messages(
             PrintBatched(
                 PrintTerminal(),
                 [
-                    PrintFile(configs.parser_history),
-                    PrintFileInputOnly(configs.input_history),
+                    PrintFile(temp_config.parser_history),
+                    PrintFileInputOnly(temp_config.input_history),
                 ]
             )
         )
+
+        # create the config object with output to the terminal and files
+        self.config = Configs(configs_folder, self.message, False)
 
     def process_commands(self) -> None:
         '''
@@ -38,7 +53,7 @@ class Parser:
         while True:
             # get the command suite, print the header, and get the args
             command_suite = CommandSuiteParser(self.message)
-            args = self.message.get_command_parser()
+            args = self.message.get_command_parser(self.config.username)
 
             # parse the args
             parsed_command_args = command_suite.parse(args)
@@ -55,13 +70,15 @@ class Parser:
                 parse_offline = bool(json.loads(parsed_args['offline'])[0] == 'True')
 
                 contest = Contest(
-                    contest_id, self.dirs.get_contest(contest_id), self.message, ScraperCodeforces, parse_offline
+                    contest_id, self.dirs.get_contest(contest_id),
+                    self.message, self.config,
+                    ScraperCodeforces, parse_offline
                 )
                 contest.process_commands()
 
             elif command == CommandsParser.CONFIG:
-                # TODO: run config
-                pass
+                self.config.edit_configs()
+                self.dirs = DirsPlatform(self.config.codeforces_folder)  # update dirs
 
             elif command == CommandsParser.HELP:
                 help_args = json.loads(parsed_args['command'])
