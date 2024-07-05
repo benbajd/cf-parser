@@ -68,13 +68,16 @@ class Problem:
         Init the problem using the online data.
         :param scraped_data: the online data
         '''
-        # creating the problem files for the first time
-        # TODO: move creating files into classes
+        # create the folder
         self.folder.create_folder()
-        self.dirs.get_main().write_file(basefiles.MAIN_CPP)
-        self.dirs.get_custom_checker().write_file(basefiles.CHECKER_CPP)
-        self.dirs.get_bruteforce().write_file(basefiles.BRUTEFORCE_CPP)
-        self.dirs.get_generator().write_file(basefiles.GENERATOR_CPP)
+
+        # creating the edit files
+        # TODO: move creating files into classes
+        cpp_header = self.config.cpp_header.rstrip('\n') + '\n\n'  # the cpp header with an empty line at the end
+        self.dirs.get_main().write_file(cpp_header + basefiles.MAIN_CPP)
+        self.dirs.get_custom_checker().write_file(cpp_header + basefiles.CHECKER_CPP)
+        self.dirs.get_bruteforce().write_file(cpp_header + basefiles.BRUTEFORCE_CPP)
+        self.dirs.get_generator().write_file(cpp_header + basefiles.GENERATOR_CPP)
 
         # set the testcase set
         num_testcases = len(scraped_data['io'])
