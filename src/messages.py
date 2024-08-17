@@ -85,7 +85,7 @@ class Messages:
         # get user input
         return self.log.get_input(input_str, StylizedStr(), history_config_items)
 
-    def get_command_parser(self, username: str) -> list[str]:
+    def get_command_parser(self, username: str) -> str:
         '''
         Print the command suite parser header and get the args.
         :param username: the username
@@ -100,10 +100,10 @@ class Messages:
             StylizedStr(time_now.strftime('%a %I:%M:%S %p'), HEADER_TIME_COLOR)
         )
         # return a list of lowercase args
-        return args_str.lower().split()
+        return args_str.lower()
 
     def get_command_problem(self, username: str, contest_id: str, problem_id: str, time_limit: float,
-                            num_testcases: tuple[int, int], testcase_mode: str, checker: str) -> list[str]:
+                            num_testcases: tuple[int, int], testcase_mode: str, checker: str) -> str:
         '''
         Print the command suite problem header and get the args.
         :param username: the username
@@ -140,7 +140,7 @@ class Messages:
             StylizedStr(time_now.strftime('%a %I:%M:%S %p'), HEADER_TIME_COLOR)
         )
         # return a list of lowercase args
-        return args_str.lower().split()
+        return args_str.lower()
 
     def input_two_options(self, decision_str_list: list[str], first_option: str = 'y', second_option: str = 'n') -> bool:
         '''
@@ -1147,3 +1147,22 @@ class Messages:
         :param command_name: the given command
         '''
         self.log.print(StylizedStr(f'"{command_name}" is not a command'))
+
+    def command_suite_odd_number_double_quotes(self) -> None:
+        '''
+        Print that an odd number of double quotes were given.
+        '''
+        self.log.print(StylizedStr('expected an even number of double quotes'))
+
+    def command_suite_no_space_next_to_quote(self, quote: Literal['o'] | Literal['c']) -> None:
+        '''
+        Print that a quote didn't have a space next to it,
+        e.g. an opening quote didn't have a space to the left or a closing quote didn't have a space to the right.
+        :param quote: 'o' for opening quote or 'c' for closing quote
+        '''
+        self.log.print(
+            (StylizedStr('an opening quote') if quote == 'o' else StylizedStr('a closing quote'))
+            + StylizedStr(' didn\'t have a space to the ')
+            + (StylizedStr('left') if quote == 'o' else StylizedStr('right'))
+            + StylizedStr(' of it')
+        )

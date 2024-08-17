@@ -17,10 +17,43 @@ class CommandSuite(Protocol[T]):
     message: Messages  # the message object that handles printing
     command_names: dict[str, Command[T]]  # the dict of command names to commands
 
-    def parse(self, args: list[str]) -> Optional[tuple[T, dict[str, str]]]:
+    def group_args(self, args: str) -> Optional[list[str]]:
+        '''
+        Process the args str by grouping args by double quotes and spaces.
+        :param args: the user inputted args
+        :return: the list of args grouped by double quotes and spaces if parsed successfully or None otherwise
+        '''
+        # check even number of double quotes
+        if args.count('"') % 2 == 1:
+            self.message.command_suite_odd_number_double_quotes()
+            return None
+
+        # input inside double quotes is kept as is, input outside is also split by space
+        quote_grouped: list[str] = args.split('"')
+        args_list: list[str] = []
+
+        for idx, quote_part in enumerate(quote_grouped):
+            if idx % 2 == 1:  # inside quotes
+                args_list.append(quote_part)
+            else:  # outside quotes
+                # add to the args list
+                args_list.extend(quote_part.split())
+                # check spaces next to quotes
+                nonspace_end: bool = len(quote_part) > 0 and not quote_part[-1].isspace()
+                nonspace_start: bool = len(quote_part) > 0 and not quote_part[0].isspace()
+                if idx + 1 < len(quote_grouped) and nonspace_end:
+                    self.message.command_suite_no_space_next_to_quote('o')
+                    return None
+                if (idx > 0 and nonspace_start) or (len(quote_part) == 0 and 0 < idx < len(quote_grouped) - 1):
+                    self.message.command_suite_no_space_next_to_quote('c')
+                    return None
+
+        return args_list
+
+    def parse(self, user_input: str) -> Optional[tuple[T, dict[str, str]]]:
         '''
         Parse the given command and args.
-        :param args: the given command and args
+        :param user_input: the given command and args
         :return: the command and parsed args if parsed successfully or None otherwise
         '''
 
@@ -443,12 +476,17 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
                 command.long_name: command
             }
 
-    def parse(self, args: list[str]) -> Optional[tuple[CommandsProblem, dict[str, str]]]:
+    def parse(self, user_input: str) -> Optional[tuple[CommandsProblem, dict[str, str]]]:
         '''
         Parse the command and arguments.
-        :param args: the given arguments
+        :param user_input: user input
         :return: the parsed command and arguments if parsed successfully or None otherwise
         '''
+        # group into args
+        args = self.group_args(user_input)
+        if args is None:
+            return None
+
         # no command given
         if len(args) == 0:
             self.message.command_suite_no_command_given()
@@ -591,12 +629,17 @@ class CommandSuiteParser(CommandSuite[CommandsParser]):
                 command.long_name: command
             }
 
-    def parse(self, args: list[str]) -> Optional[tuple[CommandsParser, dict[str, str]]]:
+    def parse(self, user_input: str) -> Optional[tuple[CommandsParser, dict[str, str]]]:
         '''
         Parse the command and arguments.
-        :param args: the given arguments
+        :param user_input: user input
         :return: the parsed command and arguments if parsed successfully or None otherwise
         '''
+        # group into args
+        args = self.group_args(user_input)
+        if args is None:
+            return None
+
         # no command given
         if len(args) == 0:
             self.message.command_suite_no_command_given()
