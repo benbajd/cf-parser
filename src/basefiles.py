@@ -8,11 +8,6 @@ typedef long long ll;
 """
 
 MAIN_CPP: str = """\
-#include <bits/stdc++.h>
-
-using namespace std;
-typedef long long ll;
-
 int main() {
     ios::sync_with_stdio(0);
     cin.tie(0);
@@ -22,11 +17,6 @@ int main() {
 """
 
 CHECKER_CPP: str = """\
-#include <bits/stdc++.h>
-
-using namespace std;
-typedef long long ll;
-
 /*
 CHECKER:
 * input: input, user output, and expected output (optional), joined with "---"
@@ -66,11 +56,6 @@ int main() {
 """
 
 BRUTEFORCE_CPP: str = """\
-#include <bits/stdc++.h>
-
-using namespace std;
-typedef long long ll;
-
 /*
 BRUTEFORCE:
 * input: random input
@@ -86,11 +71,6 @@ int main() {
 """
 
 GENERATOR_CPP: str = """\
-#include <bits/stdc++.h>
-
-using namespace std;
-typedef long long ll;
-
 /*
 GENERATOR:
 * output: a random input

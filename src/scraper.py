@@ -110,7 +110,7 @@ class ScraperCodeforces(Scraper):
             # get entire testcases and try getting multitests
             io_multitest_inputs_all: list[Optional[list[str]]] = []
             io_multitest_outputs_all: list[Optional[list[str]]] = []
-            for io_input_tag, io_output_tag in batched(problem_tag.find_all('pre'), n=2):
+            for io_input_tag, io_output_tag in batched(problem_tag.find(class_='sample-tests').find_all('pre'), n=2):
                 # input
                 io_input = io_prettify('\n'.join(io_input_tag.strings))  # entire testcase
                 io_multitest_inputs: Optional[list[str]] = None
