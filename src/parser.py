@@ -52,7 +52,7 @@ class Parser:
         '''
         while True:
             # get the command suite, print the header, and get the args
-            command_suite = CommandSuiteParser(self.message)
+            command_suite = CommandSuiteParser(self.message, self.config)
             args = self.message.get_command_parser(self.config.username)
 
             # parse the args
@@ -79,6 +79,15 @@ class Parser:
             elif command == CommandsParser.CONFIG:
                 self.config.edit_configs()
                 self.dirs = DirsPlatform(self.config.codeforces_folder)  # update dirs
+
+            elif command == CommandsParser.ALIAS:
+                alias_name_parsed_args: list[str] = json.loads(parsed_args['command'])
+                alias_str_parsed_args: list[str] = json.loads(parsed_args['args'])
+                command_suite.process_alias_command(
+                    alias_name_parsed_args[0] if len(alias_name_parsed_args) == 1 else None,
+                    alias_str_parsed_args[0] if len(alias_str_parsed_args) == 1 else None,
+                    json.loads(parsed_args['unalias'])[0] == 'True'
+                )
 
             elif command == CommandsParser.HELP:
                 help_args = json.loads(parsed_args['command'])

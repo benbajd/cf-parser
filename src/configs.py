@@ -39,7 +39,7 @@ class Configs:
         :param print_running: True if running config should be printed or False otherwise
         '''
         # set the configs folder and file
-        self.configs_folder = configs_folder
+        self.configs_folder = configs_folder  # TODO: move the directory structure into directories
         if not self.configs_folder.folder_exists():
             self.configs_folder.create_folder()
         self.configs_file = self.configs_folder.down_file('config_file')
@@ -277,3 +277,19 @@ class Configs:
         :return: the parser history file
         '''
         return self.competitive_programming_folder.down_file('parser_history.txt')
+
+    @property
+    def aliases_problem(self) -> File:
+        '''
+        Get the problem aliases file.
+        :return: the problem aliases file
+        '''
+        return self.configs_folder.down_file('aliases_problem')
+
+    @property
+    def aliases_parser(self) -> File:
+        '''
+        Get the parser aliases file.
+        :return: the parser aliases file
+        '''
+        return self.configs_folder.down_file('aliases_parser')

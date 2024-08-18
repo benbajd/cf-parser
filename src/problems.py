@@ -167,6 +167,7 @@ class Problem:
             # get the command suite
             command_suite = CommandSuiteProblem(
                 self.message,
+                self.config,
                 problem_ids,
                 self.testcase_set.get_num_scraped(),
                 len(self.testcase_set)
@@ -353,6 +354,15 @@ class Problem:
 
             elif command == CommandsProblem.MOVE:
                 return command, parsed_args  # process by the contest
+
+            elif command == CommandsProblem.ALIAS:
+                alias_name_parsed_args: list[str] = json.loads(parsed_args['command'])
+                alias_str_parsed_args: list[str] = json.loads(parsed_args['args'])
+                command_suite.process_alias_command(
+                    alias_name_parsed_args[0] if len(alias_name_parsed_args) == 1 else None,
+                    alias_str_parsed_args[0] if len(alias_str_parsed_args) == 1 else None,
+                    json.loads(parsed_args['unalias'])[0] == 'True'
+                )
 
             elif command == CommandsProblem.HELP:
                 help_args = json.loads(parsed_args['command'])

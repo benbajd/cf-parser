@@ -6,6 +6,8 @@ from enum import IntEnum
 from arguments import PositionalArgument, PositionalArgumentMode, OptionalArgument, OptionalArgumentMode
 from commands import Command
 from messages import Messages
+from configs import Configs
+from aliases import Aliases
 
 
 T = TypeVar('T')
@@ -14,8 +16,10 @@ T = TypeVar('T')
 class CommandSuite(Protocol[T]):
     '''An immutable command suite defining commands.'''
     all_commands: list[Command[T]]  # the list of commands
-    message: Messages  # the message object that handles printing
     command_names: dict[str, Command[T]]  # the dict of command names to commands
+    message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
+    alias: Aliases  # the aliases
 
     def group_args(self, args: str) -> Optional[list[str]]:
         '''
@@ -56,13 +60,87 @@ class CommandSuite(Protocol[T]):
         :param user_input: the given command and args
         :return: the command and parsed args if parsed successfully or None otherwise
         '''
+        # group into args
+        args = self.group_args(user_input)
+        if args is None:
+            return None
+
+        # no command given
+        if len(args) == 0:
+            self.message.command_suite_no_command_given()
+            return None
+
+        # check for an alias
+        if args[0] in self.alias:
+            args = self.alias[args[0]].split() + args[1:]
+
+        # no command with that name
+        if args[0] not in self.command_names:
+            self.message.command_suite_not_a_command(args[0])
+            return None
+
+        # parse the args
+        command = self.command_names[args[0]]
+        parsed_args = command.parse(args[1:])
+        if parsed_args is not None:
+            return command.command, parsed_args
+        else:
+            return None
 
     def print_help_strings(self, command_name: Optional[str]) -> None:
         '''
         Print the short help strings for all commands if command is not given
-        or the long help string for command otherwise.
-        :param command_name: the command to print the help string for
+        or the long help string for command or alias otherwise.
+        :param command_name: the command to print the help string for, must be one of the commands or aliases
         '''
+        if command_name is None:
+            for command in self.all_commands:
+                command.print_help_str_short()
+        else:
+            if command_name in self.command_names:
+                self.command_names[command_name].print_help_str_long()
+            elif command_name in self.alias:
+                self.alias.print_help_strings(command_name)
+            else:
+                assert False  # command_name should be a command or an alias
+
+    def process_alias_command(self, alias_name: Optional[str], alias_str: Optional[str], unalias: bool) -> None:
+        '''
+        Process an alias command.
+        :param alias_name: the alias name arg if given or None otherwise
+        :param alias_str: the alias string arg if given or None otherwise
+        :param unalias: the unalias flag
+        '''
+        # command was given
+        if alias_name is not None:
+            # get alias args
+            alias_args: list[str] = alias_str.split() if alias_str is not None else []
+
+            # alias
+            if not unalias:
+                # alias failed
+                if alias_name in self.command_names:
+                    self.message.cant_alias_command(alias_name)
+                elif len(alias_args) == 0 or alias_args[0] not in self.command_names:
+                    self.message.alias_failed(alias_args[0] if len(alias_args) >= 1 else None)
+                # alias successful
+                else:
+                    self.alias.add_alias(alias_name, ' '.join(alias_args))
+                    self.message.aliased_successfully(alias_name, self.alias[alias_name])
+
+            # unalias
+            else:
+                # unalias failed
+                if alias_name not in self.alias or len(alias_args) >= 1:
+                    self.message.unalias_failed(alias_name, len(alias_args) >= 1)
+                # unalias successful
+                else:
+                    self.alias.remove_alias(alias_name)
+                    self.message.unalised_successfully(alias_name)
+
+        # command was not given
+        else:
+            self.alias.print_help_strings(None)
 
 
 class CommandsProblem(IntEnum):
@@ -83,19 +161,25 @@ class CommandsProblem(IntEnum):
 class CommandSuiteProblem(CommandSuite[CommandsProblem]):
     '''An immutable command suite for problems.'''
     all_commands: list[Command[CommandsProblem]]  # the list of commands
-    message: Messages  # the message object that handles printing
     command_names: dict[str, Command[CommandsProblem]]  # the dict of command names to commands
+    message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
+    alias: Aliases  # the aliases
 
-    def __init__(self, message: Messages, problem_ids: list[str], num_scraped: int, num_testcases: int) -> None:
+    def __init__(self, message: Messages, config: Configs,
+                 problem_ids: list[str], num_scraped: int, num_testcases: int) -> None:
         '''
         Init Command SuiteProblem.
         :param message: the message object that handles printing
+        :param config: the configs object storing configs
         :param problem_ids: the list of problem ids
         :param num_scraped: the number of scraped testcases
         :param num_testcases: the number of testcases
         '''
-        # set message and make problem_ids lowercase
-        self.message: Messages = message
+        # set message, config, and alias, and make problem_ids lowercase
+        self.message = message
+        self.config = config
+        self.alias = Aliases(self.config.aliases_problem, self.message)
         problem_ids = [problem_id.lower() for problem_id in problem_ids]
 
         # edit command
@@ -430,7 +514,7 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
                 command_alias.short_name, command_alias.long_name,
                 'h', 'help',
                 'q', 'quit'
-            ]
+            ] + list(self.alias.get_alias_names())
         )
         command_help = Command(
             'h', 'help', CommandsProblem.HELP,
@@ -476,72 +560,33 @@ class CommandSuiteProblem(CommandSuite[CommandsProblem]):
                 command.long_name: command
             }
 
-    def parse(self, user_input: str) -> Optional[tuple[CommandsProblem, dict[str, str]]]:
-        '''
-        Parse the command and arguments.
-        :param user_input: user input
-        :return: the parsed command and arguments if parsed successfully or None otherwise
-        '''
-        # group into args
-        args = self.group_args(user_input)
-        if args is None:
-            return None
-
-        # no command given
-        if len(args) == 0:
-            self.message.command_suite_no_command_given()
-            return None
-
-        # TODO: aliases
-
-        # no command with that name
-        if args[0] not in self.command_names:
-            self.message.command_suite_not_a_command(args[0])
-            return None
-
-        # parse the args
-        command = self.command_names[args[0]]
-        parsed_args = command.parse(args[1:])
-        if parsed_args is not None:
-            return command.command, parsed_args
-        else:
-            return None
-
-    def print_help_strings(self, command_name: Optional[str]) -> None:
-        '''
-        Print the short help strings for all commands if command is not given
-        or the long help string for command otherwise.
-        :param command_name: the command to print the help string for, must be the name of one of the commands
-        '''
-        if command_name is None:
-            for command in self.all_commands:
-                command.print_help_str_short()
-        else:
-            assert command_name in self.command_names
-            self.command_names[command_name].print_help_str_long()
-
 
 class CommandsParser(IntEnum):
     '''The commands for parser.'''
     CODEFORCES = 1  # cf, codeforces contest-id [-o]
     CONFIG = 2  # c, config
-    HELP = 3  # h, help command[?]
-    QUIT = 4  # q, quit
+    ALIAS = 3  # a, alias command[?] args[?] [-u]
+    HELP = 4  # h, help command[?]
+    QUIT = 5  # q, quit
 
 
 class CommandSuiteParser(CommandSuite[CommandsParser]):
     '''An immutable command suite for the parser.'''
     all_commands: list[Command[CommandsParser]]  # the list of commands
-    message: Messages  # the message object that handles printing
     command_names: dict[str, Command[CommandsParser]]  # the dict of command names to commands
+    message: Messages  # the message object that handles printing
+    config: Configs  # the configs object storing configs
+    alias: Aliases  # the aliases
 
-    def __init__(self, message: Messages) -> None:
+    def __init__(self, message: Messages, config: Configs) -> None:
         '''
         Init CommandSuiteParser.
         :param message: the message object that handles printing
         '''
-        # set message
+        # set message, config, and alias
         self.message = message
+        self.config = config
+        self.alias = Aliases(self.config.aliases_parser, self.message)
 
         # codeforces command
         # cf, codeforces contest-id [-o]
@@ -579,6 +624,43 @@ class CommandSuiteParser(CommandSuite[CommandsParser]):
             ]
         )
 
+        # alias command
+        # a, alias command[?] args[?] [-u]
+        arg_alias_command = PositionalArgument(
+            'command', 'command',
+            '?', PositionalArgumentMode.ANY, self.message,
+            'the command to alias if given or show all aliases if not given'
+        )
+        arg_alias_args = PositionalArgument(
+            'args', 'args',
+            '?', PositionalArgumentMode.ANY, self.message,
+            'the args the command should be aliased to'
+        )
+        arg_alias_unalias = OptionalArgument(
+            '-u', '--unalias', 'unalias',
+            0, OptionalArgumentMode.BOOL_FLAG, self.message,
+            'when set, unalias the command',
+            ['False']
+        )
+        command_alias = Command(
+            'a', 'alias', CommandsParser.ALIAS,
+            [
+                arg_alias_command, arg_alias_args
+            ], [arg_alias_unalias], False,
+            self.message,
+            [
+                'Alias and unalias commands. When', arg_alias_command.get_name_short(), 'is given, alias',
+                arg_alias_command.get_name_short(), 'to', arg_alias_args.get_name_short(), 'if',
+                arg_alias_unalias.short_flag, 'is not set (', arg_alias_command.get_name_short(),
+                'should not be a command and the first arg in', arg_alias_args.get_name_short(),
+                'should be a command (not an alias) in this case), or unalias', arg_alias_command.get_name_short(),
+                'if', arg_alias_unalias.short_flag, 'is set (', arg_alias_args.get_name_short(),
+                'shouldn\'t be given in this case). When', arg_alias_command.get_name_short(),
+                'is not given, show all current aliases. Note that when using aliases as commands, '
+                'no recursive expansion is performed.'
+            ]
+        )
+
         # help command
         # h, help command[?]
         arg_help_command = PositionalArgument(
@@ -590,7 +672,7 @@ class CommandSuiteParser(CommandSuite[CommandsParser]):
                 command_config.short_name, command_config.long_name,
                 'h', 'help',
                 'q', 'quit'
-            ]
+            ] + list(self.alias.get_alias_names())
         )
         command_help = Command(
             'h', 'help', CommandsParser.HELP,
@@ -617,6 +699,7 @@ class CommandSuiteParser(CommandSuite[CommandsParser]):
         self.all_commands = [
             command_codeforces,
             command_config,
+            command_alias,
             command_help,
             command_quit
         ]
@@ -628,47 +711,3 @@ class CommandSuiteParser(CommandSuite[CommandsParser]):
                 command.short_name: command,
                 command.long_name: command
             }
-
-    def parse(self, user_input: str) -> Optional[tuple[CommandsParser, dict[str, str]]]:
-        '''
-        Parse the command and arguments.
-        :param user_input: user input
-        :return: the parsed command and arguments if parsed successfully or None otherwise
-        '''
-        # group into args
-        args = self.group_args(user_input)
-        if args is None:
-            return None
-
-        # no command given
-        if len(args) == 0:
-            self.message.command_suite_no_command_given()
-            return None
-
-        # TODO: aliases
-
-        # no command with that name
-        if args[0] not in self.command_names:
-            self.message.command_suite_not_a_command(args[0])
-            return None
-
-        # parse the args
-        command = self.command_names[args[0]]
-        parsed_args = command.parse(args[1:])
-        if parsed_args is not None:
-            return command.command, parsed_args
-        else:
-            return None
-
-    def print_help_strings(self, command_name: Optional[str]) -> None:
-        '''
-        Print the short help strings for all commands if command is not given
-        or the long help string for command otherwise.
-        :param command_name: the command to print the help string for, must be the name of one of the commands
-        '''
-        if command_name is None:
-            for command in self.all_commands:
-                command.print_help_str_short()
-        else:
-            assert command_name in self.command_names
-            self.command_names[command_name].print_help_str_long()

@@ -734,7 +734,7 @@ class Messages:
             failed_str += StylizedStr(f'no args were given to alias to')
         self.log.print(failed_str)
 
-    def aliased_successfully(self, alias_name: str, alias_args: list[str]) -> None:
+    def aliased_successfully(self, alias_name: str, alias_args: str) -> None:
         '''
         Print that alias_name was successfully aliased to alias_args.
         :param alias_name: alias' name
@@ -743,7 +743,7 @@ class Messages:
         self.log.print(
             StylizedStr(alias_name, COMMAND_COLOR) + StylizedStr(' was ')
             + StylizedStr('aliased', bold=True) + StylizedStr(' to ')
-            + StylizedStr(f'"{' '.join(alias_args)}"')
+            + StylizedStr(f'"{alias_args}"')
         )
 
     def unalised_successfully(self, alias_name: str) -> None:
@@ -768,7 +768,7 @@ class Messages:
             failed_str += StylizedStr(f'args were given')
         self.log.print(failed_str)
 
-    def alias_help_str(self, alias_name: str, alias_args: list[str]) -> None:
+    def alias_help_str(self, alias_name: str, alias_args: str) -> None:
         '''
         Print the help string for an alias.
         :param alias_name: alias' name
@@ -776,10 +776,10 @@ class Messages:
         '''
         self.log.print(
             StylizedStr(alias_name, COMMAND_COLOR) + StylizedStr(' is an alias to ')
-            + StylizedStr(f'"{' '.join(alias_args)}"')
+            + StylizedStr(f'"{alias_args}"')
         )
 
-    def alias_all_help_str(self, aliases: dict[str, list[str]]) -> None:
+    def alias_all_help_str(self, aliases: dict[str, str]) -> None:
         '''
         Print the help string for all aliases.
         :param aliases: the aliases dict where keys are alias names and values are the args they are aliased to
